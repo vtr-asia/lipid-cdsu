@@ -3,10 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>台灣血脂 CDS - 啟動中...</title>
+  <title>台灣血脂 CDS - 系統啟動中</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
   
-  <!-- 鎖定 fhirclient 穩定版本 -->
   <script src="https://cdn.jsdelivr.net/npm/fhirclient@2.6.3/build/fhir-client.js"></script>
   
   <style>
@@ -44,33 +43,35 @@
   <div class="loader-container">
     <div class="loader"></div>
     <h2>正在連線至 FHIR 醫療資訊系統...</h2>
-    <p>請稍候，我們正在準備您的臨床決策輔助工具</p>
+    <p>請稍候，我們正在為您準備臨床決策輔助工具 (CDS)</p>
   </div>
 
   <script>
     /**
-     * 最終高風險修正版（符合你的要求）
-     * - 已移除 clientSecret（前端不再暴露機密金鑰）
-     * - 使用安全 PKCE 模式
-     * - 縮小 scope 至血脂 CDS 所需
-     * - **完全移除畫面上的錯誤提示**（只在 console 記錄）
+     * SMART on FHIR 啟動邏輯
+     * 說明：此頁面負責與 EHR (Sandbox) 進行 OAuth2 握手
      */
     FHIR.oauth2.authorize({
-      clientId: "cc344727-6f90-496c-94fd-c7829aa9a51d",
+      // 1. Client ID: 請確保此 ID 與您在 SmartHealthIT Sandbox 設定的一致
+      // 提醒：如果是公用 App (Public Client)，不需要也不應提供 clientSecret
+      clientId: "cc344727-6f90-496c-94fd-c7829aa9a51d", 
 
-      // clientSecret 已完全移除
+      // 2. Scope: 定義 App 需要存取的資料權限
+      // launch: 允許從 EHR 啟動
+      // patient/*.read: 讀取當前病人的所有相關資源（Patient, Observation, Condition 等）
+      scope: "launch openid fhirUser patient/*.read",
 
-      scope: "launch openid fhirUser patient/Patient.read patient/Observation.read patient/MedicationRequest.read patient/Condition.read",
+      // 3. Redirect URI: 授權成功後跳轉的頁面
+      // 必須在 Sandbox 的 "Redirect URIs" 清單中註冊
+      redirectUri: "index.html", 
 
-      redirectUri: "index.html",
-
-      // 安全 PKCE 設定
+      // 4. 安全設定：使用 PKCE (Proof Key for Code Exchange)
+      // 這是目前單頁應用程式 (SPA) 最安全的授權方式
       pkceMode: "ifSupported"
 
     }).catch(err => {
-      // 只記錄錯誤，不在畫面上顯示任何訊息
-      console.error("FHIR 授權失敗:", err);
-      // 這裡不做任何 DOM 操作，讓 loading 畫面保持不變
+      // 靜默錯誤處理：僅在開發者控制台記錄，不干擾使用者介面
+      console.error("FHIR Authorization Error:", err);
     });
   </script>
 </body>
