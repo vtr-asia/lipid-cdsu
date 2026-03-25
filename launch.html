@@ -5,7 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>台灣血脂 CDS - 啟動中...</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/fhirclient/build/fhir-client.js"></script>
+  
+  <!-- 鎖定 fhirclient 穩定版本 -->
+  <script src="https://cdn.jsdelivr.net/npm/fhirclient@2.6.3/build/fhir-client.js"></script>
+  
   <style>
     :root {
       --primary: #0066cc;
@@ -46,23 +49,28 @@
 
   <script>
     /**
-     * SMART on FHIR 啟動邏輯（已符合第二階段測試規範）
-     * 使用官方 client_id / client_secret
-     * 支援 EHR Launch 與 Standalone Launch 兩種模式
+     * 最終高風險修正版（符合你的要求）
+     * - 已移除 clientSecret（前端不再暴露機密金鑰）
+     * - 使用安全 PKCE 模式
+     * - 縮小 scope 至血脂 CDS 所需
+     * - **完全移除畫面上的錯誤提示**（只在 console 記錄）
      */
     FHIR.oauth2.authorize({
-      // 官方測試用憑證（僅供本次測試，不可產品化使用）
       clientId: "cc344727-6f90-496c-94fd-c7829aa9a51d",
-      clientSecret: "79f04b56b33491716c0880af72cdef7d3f0629111421cedd18353651cd313d9e",
 
-      // Scope：支援多病人清單（與 index.html 完全相容）
-      scope: "launch openid fhirUser patient/*.read",
+      // clientSecret 已完全移除
 
-      // 認證完成後跳轉至主畫面
+      scope: "launch openid fhirUser patient/Patient.read patient/Observation.read patient/MedicationRequest.read patient/Condition.read",
+
       redirectUri: "index.html",
 
-      // 相容舊版 EMR / Sandbox 環境
-      pkceMode: "unsafe-fallback"
+      // 安全 PKCE 設定
+      pkceMode: "ifSupported"
+
+    }).catch(err => {
+      // 只記錄錯誤，不在畫面上顯示任何訊息
+      console.error("FHIR 授權失敗:", err);
+      // 這裡不做任何 DOM 操作，讓 loading 畫面保持不變
     });
   </script>
 </body>
