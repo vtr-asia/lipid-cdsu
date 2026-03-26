@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🩺 醫師端臨床決策系統 | SMART on FHIR</title>
+    <script src="https://cdn.jsdelivr.net/npm/fhirclient@2.6.3/build/fhir-client.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #0a4f8c;
+            --accent: #00b4d8;
+            --good: #1a7f4b;
+            --warn: #c47a00;
+            --danger: #a81f1f;
+            --bg: #f0f4f8;
+            --card: #ffffff;
+            --text: #1a2332;
+            --text-muted: #5a6a7e;
+            --border: #dde3ec;
+            --radius: 14px;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 320px;
+            background: linear-gradient(135deg, var(--primary), #1a6fbc);
+            color: white;
+            padding: 24px;
+            box-shadow: 3px 0 15px rgba(0,0,0,0.2);
+        }
+
+        .content { flex: 1; padding: 28px; overflow-y: auto; }
+
+        .patient-name {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            line-height: 1.2;
+        }
+
+        .patient-meta {
+            font-size: 15px;
+            opacity: 0.95;
+            line-height: 1.6;
+        }
+
+        .status-bar {
+            background: white;
+            padding: 12px 20px;
+            border-radius: var(--radius);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: 0 4px 16px rgba(10,79,140,0.1);
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 16px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .info-item {
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .info-label {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .info-value {
+            font-size: 22px;
+            font-weight: 700;
+            margin-top: 6px;
+        }
+
+        .med-list {
+            max-height: 220px;
+            overflow-y: auto;
+            font-size: 14px;
+        }
+
+        .med-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .med-item:last-child { border-bottom: none; }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 260px;
+        }
+
+        .risk-badge {
+            padding: 16px 20px;
+            border-radius: 12px;
+            font-size: 17px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, var(--good), #22a861);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+            font-weight: 700;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- 側邊欄：病人基本資訊 -->
+<div class="sidebar">
+    <h2 style="margin-bottom: 30px; text-align:center;">🩺 臨床決策系統</h2>
+    
+    <div class="card" style="background:rgba(255,255,255,0.15); color:white; border:none;">
+        <div id="patient-avatar" style="font-size:52px; text-align:center; margin-bottom:12px;">👤</div>
+        <div id="patient-name" class="patient-name">載入中...</div>
+        <div id="patient-meta" class="patient-meta"></div>
+    </div>
+</div>
+
+<!-- 主要內容區 -->
+<div class="content">
+
+    <!-- 系統狀態（最明顯處） -->
+    <div class="status-bar">
+        <span id="auth-dot" style="display:inline-block; width:12px; height:12px; border-radius:50%; background:#fbbf24; animation: pulse 2s infinite;"></span>
+        <span id="auth-status">OAuth 授權中...</span>
+        <span style="margin-left:auto; font-size:13px; color:#666;" id="server-info"></span>
+    </div>
+
+    <div class="dashboard-grid">
+        <!-- 左側：最新數值 + 趨勢圖 -->
+        <div>
+            <!-- 最新臨床數值 -->
+            <div class="card">
+                <div class="section-title">📊 最新臨床指標</div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">血壓 (SBP/DBP)</div>
+                        <div class="info-value" id="latest-bp">— / — mmHg</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">血糖</div>
+                        <div class="info-value" id="latest-bg">— mg/dL</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">體重</div>
+                        <div class="info-value" id="latest-weight">— kg</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 血壓趨勢圖 -->
+            <div class="card">
+                <div class="section-title">📈 血壓趨勢監控</div>
+                <div class="chart-container">
+                    <canvas id="bpChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 血糖趨勢圖 -->
+            <div class="card">
+                <div class="section-title">📉 血糖趨勢監控</div>
+                <div class="chart-container">
+                    <canvas id="bgChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右側：用藥 + 決策 -->
+        <div>
+            <!-- 目前用藥 -->
+            <div class="card">
+                <div class="section-title">💊 目前用藥紀錄</div>
+                <div class="med-list" id="meds-display">
+                    載入用藥資料中...
+                </div>
+            </div>
+
+            <!-- 臨床決策輔助 -->
+            <div class="card">
+                <div class="section-title">🧠 臨床決策建議</div>
+                <div id="risk-info" class="risk-badge">數據分析中...</div>
+
+                <p><strong>建議處置：</strong></p>
+                <div style="margin:12px 0; line-height:1.8;">
+                    <label><input type="checkbox"> 低鈉飲食 + 每週 150 分鐘運動</label><br>
+                    <label><input type="checkbox"> 安排 24 小時血壓監測 (ABPM)</label><br>
+                    <label><input type="checkbox"> 複查血脂與 HbA1c</label>
+                </div>
+
+                <p style="margin-top:20px;"><strong>藥物調整建議：</strong></p>
+                <select id="med-select" style="width:100%; padding:12px; border-radius:10px; border:2px solid var(--border);">
+                    <option value="">維持目前劑量</option>
+                    <option value="valsartan">Valsartan 80mg → 160mg 每日一次</option>
+                    <option value="amlodipine">新增 Amlodipine 5mg 每日一次</option>
+                </select>
+
+                <p style="margin-top:20px;"><strong>醫師備註：</strong></p>
+                <textarea id="dr-note" placeholder="輸入臨床判斷與追蹤計畫..."></textarea>
+
+                <button class="btn-submit" onclick="submitDecision()">✅ 確認醫囑並傳送至 HIS</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let bpChart, bgChart;
+    let smartClient = null;
+
+    function initCharts() {
+        bpChart = new Chart(document.getElementById('bpChart'), {
+            type: 'line',
+            data: { labels: [], datasets: [
+                { label: '收縮壓 (SBP)', data: [], borderColor: '#e74c3c', tension: 0.4 },
+                { label: '舒張壓 (DBP)', data: [], borderColor: '#3498db', tension: 0.4 }
+            ]},
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' }}}
+        });
+
+        bgChart = new Chart(document.getElementById('bgChart'), {
+            type: 'bar',
+            data: { labels: [], datasets: [{ label: '血糖 (mg/dL)', data: [], backgroundColor: '#f1c40f' }]},
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
+    async function startApp() {
+        initCharts();
+
+        try {
+            smartClient = await FHIR.oauth2.ready();
+            
+            document.getElementById('auth-status').innerHTML = '✅ OAuth 授權成功';
+            document.getElementById('auth-dot').style.background = '#4ade80';
+            document.getElementById('auth-dot').style.animation = 'none';
+
+            document.getElementById('server-info').textContent = 
+                (smartClient.state.serverUrl || '').replace('https://', '');
+
+            const patient = await smartClient.patient.read();
+            await renderPatientInfo(patient);
+            await loadAllClinicalData(patient.id);
+
+        } catch (err) {
+            console.warn("SMART 授權失敗，進入 Demo 模式");
+            document.getElementById('auth-status').innerHTML = '⚠️ Demo 模式 (無真實授權)';
+            document.getElementById('auth-dot').style.background = '#f87171';
+
+            // Demo 病人
+            document.getElementById('patient-name').textContent = "陳嘉明";
+            document.getElementById('patient-meta').innerHTML = 
+                `男性 | 出生日期：1968-05-12 | 年齡：57 歲<br>FHIR ID：DEMO-PATIENT-01`;
+
+            loadDemoData();
+        }
+    }
+
+    async function renderPatientInfo(patient) {
+        const name = patient.name && patient.name[0] 
+            ? (patient.name[0].text || 
+               [patient.name[0].family, ...(patient.name[0].given || [])].filter(Boolean).join(' '))
+            : "未提供姓名";
+
+        document.getElementById('patient-name').textContent = name;
+        document.getElementById('patient-avatar').textContent = 
+            patient.gender === 'male' ? '👨' : patient.gender === 'female' ? '👩' : '👤';
+
+        const age = patient.birthDate 
+            ? Math.floor((Date.now() - new Date(patient.birthDate)) / (365.25*24*3600*1000)) + ' 歲'
+            : '—';
+
+        document.getElementById('patient-meta').innerHTML = 
+            `${patient.gender === 'male' ? '男性' : patient.gender === 'female' ? '女性' : '其他'} | ` +
+            `出生：${patient.birthDate || '—'} | 年齡：${age}`;
+    }
+
+    async function loadAllClinicalData(patientId) {
+        // 最新指標
+        await loadLatestVitals(patientId);
+        
+        // 用藥資訊
+        await loadMedications(patientId);
+        
+        // 趨勢圖資料
+        await loadObservationTrends(patientId);
+    }
+
+    async function loadLatestVitals(patientId) {
+        try {
+            // 血壓
+            const bpRes = await smartClient.request(`Observation?patient=${patientId}&code=85354-9&_sort=-date&_count=1`);
+            if (bpRes.entry && bpRes.entry.length > 0) {
+                const comp = bpRes.entry[0].resource.component || [];
+                const sbp = comp[0]?.valueQuantity?.value || '—';
+                const dbp = comp[1]?.valueQuantity?.value || '—';
+                document.getElementById('latest-bp').textContent = `${sbp} / ${dbp} mmHg`;
+            }
+
+            // 血糖
+            const bgRes = await smartClient.request(`Observation?patient=${patientId}&code=2339-0&_sort=-date&_count=1`);
+            if (bgRes.entry && bgRes.entry.length > 0) {
+                const val = bgRes.entry[0].resource.valueQuantity?.value || '—';
+                document.getElementById('latest-bg').textContent = `${val} mg/dL`;
+            }
+
+            // 體重
+            const wtRes = await smartClient.request(`Observation?patient=${patientId}&code=29463-7&_sort=-date&_count=1`);
+            if (wtRes.entry && wtRes.entry.length > 0) {
+                const val = wtRes.entry[0].resource.valueQuantity?.value || '—';
+                document.getElementById('latest-weight').textContent = `${val} kg`;
+            }
+        } catch(e) {}
+    }
+
+    async function loadMedications(patientId) {
+        let html = "";
+        try {
+            const res = await smartClient.request(`MedicationRequest?patient=${patientId}&_count=10&_sort=-authoredOn`);
+            if (res.entry && res.entry.length > 0) {
+                res.entry.forEach(entry => {
+                    const m = entry.resource;
+                    const name = m.medicationCodeableConcept?.coding?.[0]?.display || "未知藥物";
+                    const status = m.status || "unknown";
+                    html += `<div class="med-item"><strong>${name}</strong> <span style="color:#16a34a;">(${status})</span></div>`;
+                });
+            } else {
+                html = "目前無用藥
