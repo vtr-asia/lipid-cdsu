@@ -2,140 +2,88 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <title>🩺 2025 台灣血脂 CDS 測試版</title>
+  <title>🩺 台灣血脂 CDS - 2025 臨床路徑 (穩定版)</title>
   <script src="https://cdn.jsdelivr.net/npm/fhirclient@2.6.3/build/fhir-client.js"></script>
   <style>
-    body { font-family: sans-serif; padding: 20px; background: #f4f7f9; color: #333; line-height: 1.5; }
-    .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
-    .status-box { padding: 15px; border-radius: 8px; color: white; font-weight: bold; margin-top: 10px; }
-    .good { background: #27ae60; }
-    .warn { background: #f39c12; }
-    .danger { background: #e74c3c; }
-    .info { background: #3498db; }
+    body { font-family: -apple-system, sans-serif; padding: 20px; background-color: #f0f2f5; color: #333; }
+    .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    .decision { padding: 25px; border-radius: 12px; color: white; margin-top: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .status-good { background: linear-gradient(135deg, #27ae60, #2ecc71); }
+    .status-warning { background: linear-gradient(135deg, #f39c12, #f1c40f); }
+    .status-danger { background: linear-gradient(135deg, #c0392b, #e74c3c); }
+    .status-info { background: linear-gradient(135deg, #2980b9, #3498db); }
     
-    .debug-section { margin-top: 30px; border-top: 2px solid #ddd; padding-top: 20px; }
-    .debug-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    pre { background: #2d3436; color: #fab1a0; padding: 15px; border-radius: 6px; overflow: auto; max-height: 400px; font-size: 12px; }
-    h3 { color: #2c3e50; border-left: 5px solid #3498db; padding-left: 10px; }
-    .badge { display: inline-block; background: #eee; padding: 2px 8px; border-radius: 20px; font-size: 12px; margin-right: 5px; }
-    .btn-reset { float: right; background: #636e72; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+    .debug-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+    pre { background: #2d3436; color: #dfe6e9; padding: 15px; border-radius: 8px; font-size: 12px; overflow: auto; max-height: 350px; }
+    .btn-reset { float: right; background: #636e72; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+    .tag { display: inline-block; background: #eee; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 5px; }
   </style>
 </head>
 <body>
 
   <div class="card">
-    <button class="btn-reset" onclick="sessionStorage.clear(); location.reload();">重設 Session</button>
-    <h2>👤 患者基本資訊</h2>
-    <div id="patient-display">載入中...</div>
+    <button class="btn-reset" onclick="forceReset()">強制重新授權</button>
+    <h1>🩺 台灣血脂 CDS 決策支援系統</h1>
+    <div id="patient-info">⏳ 正在連線至 FHIR 系統...</div>
   </div>
 
-  <div class="card">
-    <h3>📊 臨床決策建議 (CDS)</h3>
-    <div id="decision-display">正在分析臨床數據...</div>
-  </div>
+  <div id="decision-result">
+    </div>
 
-  <div class="debug-section">
-    <h2>🛠️ 開發者調試面板 (檢查為何資料不完整)</h2>
-    <div class="debug-grid">
-      <div>
-        <h3>1. 所有的檢驗項目 (Observations)</h3>
-        <p><small>若下方為空，代表 Scope 不足或該病人真的沒檢驗資料。</small></p>
-        <pre id="raw-obs">等待中...</pre>
-      </div>
-      <div>
-        <h3>2. 所有的診斷紀錄 (Conditions)</h3>
-        <p><small>檢查是否有 Diabetes 或 MI 等關鍵字。</small></p>
-        <pre id="raw-cond">等待中...</pre>
-      </div>
+  <div class="debug-panel">
+    <div>
+      <h3>📄 診斷紀錄 (Conditions)</h3>
+      <pre id="raw-cond">等待資料...</pre>
+    </div>
+    <div>
+      <h3>🧪 檢驗數值 (Observations)</h3>
+      <pre id="raw-obs">等待資料...</pre>
     </div>
   </div>
 
   <script>
-    // 配置
-    const LOINC_LDL = "13457-7"; 
+    const LOINC_LDL = "13457-7";
 
-    async function startApp() {
-      const patientEl = document.getElementById("patient-display");
-      const decisionEl = document.getElementById("decision-display");
-      const obsRawEl = document.getElementById("raw-obs");
-      const condRawEl = document.getElementById("raw-cond");
+    function forceReset() {
+      sessionStorage.clear();
+      window.location.href = "launch.html";
+    }
+
+    // 核心決策引擎
+    function runDecisionSupport(ldl, riskTarget, riskDesc) {
+      if (ldl === null) {
+        return `<div class="decision status-info"><h3>❓ 找不到 LDL-C 數據</h3><p>此病患尚無 LOINC 13457-7 紀錄。建議安排檢驗。</p><p><small>判定風險：${riskDesc}</small></p></div>`;
+      }
+      const isAchieved = ldl < riskTarget;
+      const statusClass = isAchieved ? "status-good" : (ldl >= riskTarget * 1.2 ? "status-danger" : "status-warning");
+      return `
+        <div class="decision ${statusClass}">
+          <h2>${isAchieved ? "✅ 控制良好" : "🚨 建議調整治療"}</h2>
+          <p style="font-size: 1.2em;">目前 LDL-C: <strong>${ldl}</strong> mg/dL | 目標值: < <strong>${riskTarget}</strong></p>
+          <hr style="opacity:0.3">
+          <p><strong>風險評估：</strong>${riskDesc}</p>
+          <p><strong>臨床建議：</strong>${isAchieved ? "維持目前治療。" : "建議考慮加強 Statin 劑量或合併 Ezetimibe 治療。"}</p>
+        </div>`;
+    }
+
+    async function initApp() {
+      const urlParams = new URLSearchParams(window.location.search);
+      
+      // 1. 如果是從啟動頁面導回（帶有 code），先清空舊 Session 避免 state 衝突
+      if (urlParams.has("code")) {
+        sessionStorage.clear();
+      }
 
       try {
-        // 1. 初始化 SMART (如果是新 Code 會自動處理)
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has("code")) sessionStorage.clear(); 
-        
-        const client = await FHIR.oauth2.ready();
+        const client = await FHIR.oauth2.ready(); // 這裡會處理 code 換 token
         const pid = client.patient.id;
 
-        // 2. 抓取完整資料包 (不限 LDL，先抓全部 Observation 來看)
-        const [patient, allObs, allCond] = await Promise.all([
+        // 2. 抓取完整臨床數據
+        const [patient, obsBundle, condBundle] = await Promise.all([
           client.request(`Patient/${pid}`),
-          client.request(`Observation?patient=${pid}`), // 不加 Code 過濾，看看到底有什麼
+          client.request(`Observation?patient=${pid}`),
           client.request(`Condition?patient=${pid}`)
         ]);
 
-        // 3. 渲染患者資訊
-        const pName = patient.name ? (patient.name[0].text || patient.name[0].given.join(" ")) : "Unknown";
-        patientEl.innerHTML = `
-          <div style="font-size: 1.2em; font-weight: bold;">${pName}</div>
-          <div>ID: ${pid} | 性別: ${patient.gender} | 生日: ${patient.birthDate}</div>
-        `;
-
-        // 4. 在調試面板顯示原始資料
-        obsRawEl.textContent = JSON.stringify(allObs, null, 2);
-        condRawEl.textContent = JSON.stringify(allCond, null, 2);
-
-        // 5. 尋找 LDL 數據
-        // 從「所有」檢驗中過濾出 LDL (13457-7)
-        let ldlValue = null;
-        if (allObs.entry) {
-          const ldlEntry = allObs.entry.find(e => {
-            const codes = e.resource.code.coding;
-            return codes.some(c => c.code === LOINC_LDL);
-          });
-          if (ldlEntry) ldlValue = ldlEntry.resource.valueQuantity.value;
-        }
-
-        // 6. 判定風險 (根據 Condition)
-        const condString = JSON.stringify(allCond).toLowerCase();
-        let riskText = "一般風險 (目標 < 130)";
-        let target = 130;
-
-        if (condString.includes("diabetes") || condString.includes("e11")) {
-          riskText = "高風險 (糖尿病) (目標 < 100)";
-          target = 100;
-        }
-        if (condString.includes("myocardial") || condString.includes("dialysis")) {
-          riskText = "非常高風險 (目標 < 70)";
-          target = 70;
-        }
-
-        // 7. 顯示決策
-        if (ldlValue === null) {
-          decisionEl.innerHTML = `
-            <div class="status-box info">⚠️ 找不到 LDL-C 紀錄</div>
-            <p>系統掃描了 ${allObs.total || 0} 筆檢驗項目，但未發現 LOINC 13457-7。</p>
-            <p>請檢查調試面板確認該病人是否有其他代碼的血脂報告。</p>
-          `;
-        } else {
-          const isOk = ldlValue < target;
-          decisionEl.innerHTML = `
-            <div class="status-box ${isOk ? 'good' : 'danger'}">
-              ${isOk ? '✅ 達標' : '🚨 未達標'} (目前: ${ldlValue} / 目標: ${target})
-            </div>
-            <p><strong>風險評估：</strong>${riskText}</p>
-            <p><strong>臨床建議：</strong>${isOk ? '維持目前治療。' : '建議調整藥物劑量或增加合併治療。'}</p>
-          `;
-        }
-
-      } catch (err) {
-        console.error(err);
-        decisionEl.innerHTML = `<div class="status-box danger">錯誤: ${err.message}</div>`;
-      }
-    }
-
-    document.addEventListener("DOMContentLoaded", startApp);
-  </script>
-</body>
-</html>
+        // 3. 顯示調試資料
+        document.getElementById("raw-obs").textContent = JSON.stringify(obsBundle,
