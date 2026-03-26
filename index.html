@@ -27,212 +27,147 @@
       --radius: 14px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Noto Sans TC', -apple-system, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-    }
+    body { font-family: 'Noto Sans TC', -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
-    /* ── Top bar ── */
     .topbar {
       background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-      color: white;
-      padding: 16px 32px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      color: white; padding: 16px 32px;
+      display: flex; align-items: center; justify-content: space-between;
       box-shadow: 0 2px 8px rgba(0,0,0,0.18);
     }
-    .topbar-title { font-size: 20px; font-weight: 700; letter-spacing: 0.5px; }
+    .topbar-title { font-size: 20px; font-weight: 700; }
     .topbar-sub   { font-size: 13px; opacity: 0.8; margin-top: 2px; }
     .auth-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(255,255,255,0.18);
-      border: 1px solid rgba(255,255,255,0.35);
-      border-radius: 20px;
-      padding: 5px 14px;
-      font-size: 13px;
-      font-weight: 500;
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.35);
+      border-radius: 20px; padding: 5px 14px; font-size: 13px; font-weight: 500;
     }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: #fbbf24; display: inline-block; animation: pulse 2s infinite; }
     @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
 
-    /* ── Main layout ── */
     .main { max-width: 1100px; margin: 0 auto; padding: 28px 24px; }
 
-    /* ── Context bar ── */
-    .context-bar {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-bottom: 20px;
-    }
+    .context-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
     .context-chip {
-      background: white;
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 5px 14px;
-      font-size: 12px;
-      color: var(--text-muted);
+      background: white; border: 1px solid var(--border); border-radius: 20px;
+      padding: 5px 14px; font-size: 12px; color: var(--text-muted);
       display: flex; align-items: center; gap: 5px;
     }
     .context-chip span { color: var(--primary); font-weight: 600; }
 
     /* ── Patient card ── */
     .patient-card {
-      background: var(--card);
-      border-radius: var(--radius);
-      padding: 22px 28px;
-      box-shadow: var(--shadow);
-      margin-bottom: 24px;
-      border: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      gap: 24px;
-      flex-wrap: wrap;
+      background: var(--card); border-radius: var(--radius);
+      padding: 22px 28px; box-shadow: var(--shadow);
+      margin-bottom: 24px; border: 1px solid var(--border);
+      display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
     }
     .patient-avatar {
       width: 58px; height: 58px;
       background: linear-gradient(135deg, var(--primary), var(--accent));
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
       font-size: 26px; flex-shrink: 0;
     }
     .patient-info { flex: 1; min-width: 200px; }
     .patient-name { font-size: 20px; font-weight: 700; color: var(--primary); }
     .patient-meta { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
-    .patient-id-chip {
-      background: #e8f0fe; color: var(--primary);
+    .patient-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .chip {
       border-radius: 8px; padding: 3px 10px;
-      font-size: 12px; font-weight: 500; margin-top: 6px; display: inline-block;
+      font-size: 12px; font-weight: 500; display: inline-block;
     }
-    .select-wrap { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .select-wrap label { font-weight: 600; font-size: 14px; color: var(--text-muted); white-space: nowrap; }
+    .chip-blue   { background: #e8f0fe; color: var(--primary); }
+    .chip-green  { background: #dcfce7; color: #166534; }
+    .chip-yellow { background: #fef9c3; color: #854d0e; }
+    .chip-red    { background: #fee2e2; color: #991b1b; }
+    .chip-gray   { background: #f1f5f9; color: #475569; }
+
+    /* ── Risk selector ── */
+    .risk-selector {
+      background: var(--card); border-radius: var(--radius);
+      padding: 16px 22px; box-shadow: var(--shadow);
+      margin-bottom: 24px; border: 1px solid var(--border);
+    }
+    .risk-selector label { font-weight: 600; font-size: 14px; color: var(--text-muted); display: block; margin-bottom: 8px; }
+    .risk-note { font-size: 12px; color: #94a3b8; margin-top: 6px; }
     select {
-      padding: 10px 16px;
-      font-size: 15px;
-      font-family: inherit;
-      border: 2px solid var(--border);
-      border-radius: 10px;
-      background: white;
-      color: var(--text);
-      cursor: pointer;
-      min-width: 260px;
-      transition: border-color 0.2s;
+      padding: 10px 16px; font-size: 15px; font-family: inherit;
+      border: 2px solid var(--border); border-radius: 10px;
+      background: white; color: var(--text); cursor: pointer;
+      min-width: 260px; transition: border-color 0.2s; width: 100%; max-width: 480px;
     }
     select:focus { outline: none; border-color: var(--primary-light); }
 
-    /* ── Metrics row ── */
+    /* ── Metrics ── */
     .metrics-row {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px; margin-bottom: 24px;
     }
     .metric-card {
-      background: var(--card);
-      border-radius: var(--radius);
-      padding: 18px 22px;
-      box-shadow: var(--shadow);
-      border: 1px solid var(--border);
-      text-align: center;
+      background: var(--card); border-radius: var(--radius);
+      padding: 18px 22px; box-shadow: var(--shadow);
+      border: 1px solid var(--border); text-align: center;
     }
     .metric-label { font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
     .metric-value { font-size: 30px; font-weight: 800; color: var(--primary); margin-top: 6px; }
     .metric-unit  { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
 
-    /* ── Decision card ── */
+    /* ── Decision ── */
     .decision {
-      border-radius: var(--radius);
-      padding: 28px 32px;
-      margin-bottom: 24px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.13);
-      color: white;
-      position: relative;
-      overflow: hidden;
-      transition: all 0.35s ease;
+      border-radius: var(--radius); padding: 28px 32px; margin-bottom: 24px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.13); color: white;
+      position: relative; overflow: hidden; transition: all 0.35s ease;
     }
     .decision::before {
-      content: '';
-      position: absolute;
-      top: -40px; right: -40px;
-      width: 160px; height: 160px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.08);
+      content: ''; position: absolute; top: -40px; right: -40px;
+      width: 160px; height: 160px; border-radius: 50%; background: rgba(255,255,255,0.08);
     }
     .status-good    { background: linear-gradient(135deg, var(--good) 0%, var(--good-light) 100%); }
     .status-warning { background: linear-gradient(135deg, var(--warn) 0%, var(--warn-light) 100%); }
     .status-danger  { background: linear-gradient(135deg, var(--danger) 0%, var(--danger-light) 100%); }
     .status-unknown { background: linear-gradient(135deg, #3d4f63 0%, var(--unknown) 100%); }
-    .decision-title   { font-size: 26px; font-weight: 800; letter-spacing: 0.3px; }
+    .decision-title   { font-size: 26px; font-weight: 800; }
     .decision-value   { font-size: 17px; opacity: 0.92; margin-top: 6px; }
     .decision-divider { border: none; border-top: 1px solid rgba(255,255,255,0.28); margin: 16px 0; }
     .decision-body    { font-size: 15px; line-height: 1.8; }
-    .decision-body strong { font-weight: 700; }
 
     /* ── Loading / Error ── */
     .loading-state {
-      background: var(--card);
-      border-radius: var(--radius);
-      padding: 50px;
-      text-align: center;
-      box-shadow: var(--shadow);
-      border: 1px solid var(--border);
-      margin-bottom: 24px;
+      background: var(--card); border-radius: var(--radius); padding: 50px;
+      text-align: center; box-shadow: var(--shadow); border: 1px solid var(--border); margin-bottom: 24px;
     }
     .spinner {
-      border: 4px solid var(--border);
-      border-left-color: var(--primary-light);
-      border-radius: 50%;
-      width: 42px; height: 42px;
-      animation: spin 0.9s linear infinite;
-      margin: 0 auto 18px;
+      border: 4px solid var(--border); border-left-color: var(--primary-light);
+      border-radius: 50%; width: 42px; height: 42px;
+      animation: spin 0.9s linear infinite; margin: 0 auto 18px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
     .loading-text { font-size: 16px; color: var(--text-muted); }
 
     .error-state {
-      background: #fff5f5;
-      border: 1.5px solid #fca5a5;
-      border-radius: var(--radius);
-      padding: 28px 32px;
-      margin-bottom: 24px;
+      background: #fff5f5; border: 1.5px solid #fca5a5;
+      border-radius: var(--radius); padding: 28px 32px; margin-bottom: 24px;
     }
     .error-state h3 { color: var(--danger-light); font-size: 18px; margin-bottom: 10px; }
     .error-state p  { font-size: 14px; color: #7f1d1d; line-height: 1.7; }
     .error-state code { background: #fee2e2; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
 
-    /* ── Debug panel ── */
+    /* ── Debug ── */
     .debug-section { margin-top: 8px; }
     .debug-toggle {
-      background: none; border: 1px solid var(--border);
-      border-radius: 8px; padding: 7px 16px;
-      font-size: 13px; color: var(--text-muted);
-      cursor: pointer; margin-bottom: 14px;
-      font-family: inherit;
-      transition: all 0.2s;
+      background: none; border: 1px solid var(--border); border-radius: 8px;
+      padding: 7px 16px; font-size: 13px; color: var(--text-muted);
+      cursor: pointer; margin-bottom: 14px; font-family: inherit; transition: all 0.2s;
     }
     .debug-toggle:hover { background: var(--border); color: var(--text); }
     .debug-panel { display: none; grid-template-columns: 1fr 1fr; gap: 20px; }
     .debug-panel.open { display: grid; }
-    .debug-block h4 {
-      font-size: 13px; font-weight: 700; color: var(--text-muted);
-      margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;
-    }
-    pre {
-      background: #1a2332; color: #a8c4e0;
-      padding: 16px; border-radius: 10px;
-      font-size: 11.5px; overflow: auto;
-      max-height: 280px; line-height: 1.6;
-    }
+    .debug-block h4 { font-size: 13px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    pre { background: #1a2332; color: #a8c4e0; padding: 16px; border-radius: 10px; font-size: 11.5px; overflow: auto; max-height: 280px; line-height: 1.6; }
 
     @media (max-width: 680px) {
       .topbar { flex-direction: column; align-items: flex-start; gap: 10px; padding: 14px 18px; }
       .main { padding: 18px 14px; }
-      .patient-card { padding: 16px; }
       .decision { padding: 20px; }
       .decision-title { font-size: 21px; }
       .debug-panel { grid-template-columns: 1fr; }
@@ -255,30 +190,34 @@
 
     <div class="context-bar" id="contextBar" style="display:none;">
       <div class="context-chip">🏥 FHIR Server：<span id="ctxServer">—</span></div>
-      <div class="context-chip">👤 病人 ID：<span id="ctxPatient">—</span></div>
+      <div class="context-chip">👤 病人 FHIR ID：<span id="ctxPatient">—</span></div>
       <div class="context-chip">🩺 醫師：<span id="ctxPractitioner">—</span></div>
       <div class="context-chip">📋 Encounter：<span id="ctxEncounter">—</span></div>
     </div>
 
+    <!-- 病人資訊卡（從 FHIR 讀取） -->
     <div class="patient-card">
       <div class="patient-avatar" id="patientAvatar">👤</div>
       <div class="patient-info">
-        <div class="patient-name" id="patientName">— 未選擇病人 —</div>
-        <div class="patient-meta" id="patientMeta">請選擇個案或等待 EHR context 載入</div>
-        <div class="patient-id-chip" id="patientIdChip">ID：—</div>
-      </div>
-      <div class="select-wrap">
-        <label for="patientSelect">個案選擇：</label>
-        <select id="patientSelect">
-          <option value="case-001">Case 1：陳建國（一般風險 - 目標 130）</option>
-          <option value="case-002">Case 2：林淑芬（高風險/糖尿病 - 目標 100）</option>
-          <option value="case-003">Case 3：李大衛（非常高風險/MI - 目標 70）</option>
-          <option value="case-004">Case 4：張阿中（極高風險/洗腎 - 目標 70）</option>
-          <option value="case-005">Case 5：查無此人（數據缺失測試）</option>
-        </select>
+        <div class="patient-name" id="patientName">載入中...</div>
+        <div class="patient-meta" id="patientMeta">正在從 FHIR Server 讀取病人資料</div>
+        <div class="patient-chips" id="patientChips"></div>
       </div>
     </div>
 
+    <!-- 風險等級選擇器（與 FHIR ID 分離，只控制 CDS 判斷邏輯） -->
+    <div class="risk-selector">
+      <label for="riskSelect">⚙️ 臨床風險分層設定（人工指定）：</label>
+      <select id="riskSelect">
+        <option value="low">一般風險（目標 LDL &lt; 130 mg/dL）</option>
+        <option value="high">高風險：糖尿病（目標 LDL &lt; 100 mg/dL）</option>
+        <option value="veryhigh_mi">非常高風險：急性心肌梗塞病史（目標 LDL &lt; 70 mg/dL）</option>
+        <option value="veryhigh_ckd">極高風險：CKD Stage 5 / 洗腎（目標 LDL &lt; 70 mg/dL）</option>
+      </select>
+      <div class="risk-note">※ 此選擇器用於指定 CDS 風險分層，不影響 FHIR 病人查詢</div>
+    </div>
+
+    <!-- 指標卡 -->
     <div class="metrics-row" id="metricsRow" style="display:none;">
       <div class="metric-card">
         <div class="metric-label">LDL-C 數值</div>
@@ -302,6 +241,7 @@
       </div>
     </div>
 
+    <!-- 決策結果 -->
     <div id="decisionResult">
       <div class="loading-state">
         <div class="spinner"></div>
@@ -309,6 +249,7 @@
       </div>
     </div>
 
+    <!-- Debug -->
     <div class="debug-section" id="debugSection" style="display:none;">
       <button class="debug-toggle" id="debugToggle" onclick="toggleDebug()">▶ 顯示原始 FHIR 資源</button>
       <div class="debug-panel" id="debugPanel">
@@ -326,34 +267,88 @@
   </div>
 
   <script>
-  // ═══════════════════════════════════════════════════════════════
-  // 1. 風險設定常數
-  // ═══════════════════════════════════════════════════════════════
-  const PATIENT_RISK = {
-    "case-001": { level:"low",      icon:"🟢", label:"一般風險",   name:"陳建國", target:130, desc:"無重大心血管疾病、無糖尿病、無慢性腎病" },
-    "case-002": { level:"high",     icon:"🟡", label:"高風險",     name:"林淑芬", target:100, desc:"糖尿病病史（DM）" },
-    "case-003": { level:"veryhigh", icon:"🔴", label:"非常高風險", name:"李大衛", target:70,  desc:"曾患急性心肌梗塞（History of MI）" },
-    "case-004": { level:"veryhigh", icon:"🔴", label:"極高風險",   name:"張阿中", target:70,  desc:"慢性腎病第五期（CKD Stage 5 / 洗腎）" },
-    "case-005": { level:"unknown",  icon:"⚪", label:"未知",       name:"查無此人", target:null, desc:"新進病人，尚無血脂紀錄" }
+  // ═══════════════════════════════════════════════════════════
+  // 風險設定（與 FHIR ID 完全分離）
+  // ═══════════════════════════════════════════════════════════
+  const RISK_CONFIG = {
+    "low":          { icon:"🟢", label:"一般風險",   target:130, desc:"無重大心血管疾病、無糖尿病、無慢性腎病" },
+    "high":         { icon:"🟡", label:"高風險",     target:100, desc:"糖尿病病史（DM）" },
+    "veryhigh_mi":  { icon:"🔴", label:"非常高風險", target:70,  desc:"曾患急性心肌梗塞（History of MI）" },
+    "veryhigh_ckd": { icon:"🔴", label:"極高風險",   target:70,  desc:"慢性腎病第五期（CKD Stage 5 / 洗腎）" }
   };
-  const LOINC_LDL = "13457-7";
 
-  // ═══════════════════════════════════════════════════════════════
-  // 2. CDS 決策邏輯（2025 專家共識版）
-  // ═══════════════════════════════════════════════════════════════
-  function evaluateStatinRecommendation(ldl, patientId) {
-    const risk = PATIENT_RISK[patientId];
-    if (!risk) return { html:"<div class='decision status-unknown'><div class='decision-title'>❓ 查無此個案風險設定</div></div>", ldl:null, target:null };
+  const LOINC_LDL = "13457-7";
+  let _fhirPatientId = null;   // 真實 FHIR Patient ID（來自 EHR context）
+  let _smartClient   = null;
+
+  // ═══════════════════════════════════════════════════════════
+  // 解析 FHIR Patient 資源，顯示病人資訊卡
+  // ═══════════════════════════════════════════════════════════
+  function renderPatientCard(pJson) {
+    if (!pJson) {
+      document.getElementById("patientName").textContent = "（查無此病人）";
+      document.getElementById("patientMeta").textContent = `FHIR ID: ${_fhirPatientId}`;
+      return;
+    }
+
+    // 姓名
+    let name = "（未提供姓名）";
+    if (pJson.name && pJson.name.length > 0) {
+      const n = pJson.name[0];
+      name = n.text || [n.family, ...(n.given || [])].filter(Boolean).join(" ");
+    }
+    document.getElementById("patientName").textContent = name || "（未提供姓名）";
+
+    // 基本資料
+    const gender = pJson.gender === "male" ? "男性" : pJson.gender === "female" ? "女性" : pJson.gender || "—";
+    const dob    = pJson.birthDate || "—";
+    let age      = "—";
+    if (pJson.birthDate) {
+      const diff = new Date() - new Date(pJson.birthDate);
+      age = Math.floor(diff / (365.25 * 24 * 3600 * 1000)) + " 歲";
+    }
+    document.getElementById("patientMeta").textContent = `性別：${gender}　出生：${dob}　年齡：${age}`;
+
+    // chips
+    const chips = document.getElementById("patientChips");
+    chips.innerHTML = "";
+    const addChip = (text, cls) => {
+      const c = document.createElement("span");
+      c.className = `chip ${cls}`;
+      c.textContent = text;
+      chips.appendChild(c);
+    };
+    addChip(`FHIR ID：${_fhirPatientId}`, "chip-blue");
+    if (pJson.gender) addChip(gender, "chip-gray");
+    if (pJson.birthDate) addChip(age, "chip-gray");
+
+    // 識別碼（MRN 等）
+    if (pJson.identifier) {
+      pJson.identifier.slice(0,2).forEach(id => {
+        if (id.value) addChip(id.value, "chip-gray");
+      });
+    }
+
+    // 頭像
+    document.getElementById("patientAvatar").textContent =
+      pJson.gender === "male" ? "👨" : pJson.gender === "female" ? "👩" : "👤";
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // CDS 決策邏輯
+  // ═══════════════════════════════════════════════════════════
+  function evaluateStatinRecommendation(ldl, riskKey) {
+    const risk = RISK_CONFIG[riskKey] || RISK_CONFIG["low"];
 
     if (ldl === null || ldl === undefined) {
       return {
         html:`<div class="decision status-unknown">
           <div class="decision-title">❓ 臨床資訊不足</div>
-          <div class="decision-value">找不到 LDL-C 檢驗紀錄（LOINC: ${LOINC_LDL}）</div>
+          <div class="decision-value">此病人在 FHIR Server 上無 LDL-C 檢驗紀錄（LOINC: ${LOINC_LDL}）</div>
           <hr class="decision-divider">
           <div class="decision-body">
-            <strong>個案背景：</strong> ${risk.desc}<br><br>
-            <strong>建議：</strong> 目前無法判定是否達標。建議醫師立即安排血脂抽血檢驗，以進行風險分層管理。
+            <strong>風險設定：</strong> ${risk.icon} ${risk.label}（${risk.desc}）<br><br>
+            <strong>建議：</strong> 目前無法判定是否達標。請安排血脂抽血檢驗後再行評估。
           </div>
         </div>`,
         ldl:null, target:risk.target
@@ -365,16 +360,15 @@
     const isAchieved = ldl < target;
     const isSeverelyHigh = ldl >= target * 1.2;
 
-    let statusClass = "status-good";
-    let title = "✅ 良好控制";
-    let drugAdvice = "目前治療效果理想。依據 2025 臺灣共識，建議維持良好飲食習慣與現有藥物，並定期追蹤血脂數值。";
+    let statusClass = "status-good", title = "✅ 良好控制";
+    let drugAdvice = "目前治療效果理想。建議維持良好飲食習慣與現有藥物，並定期追蹤血脂數值。";
 
     if (!isAchieved) {
       statusClass = isSeverelyHigh ? "status-danger" : "status-warning";
       title = isSeverelyHigh ? "🚨 立即加強治療" : "⚠️ 尚未達標";
       drugAdvice = isSeverelyHigh
-        ? `<strong>專家建議（2025 共識）：</strong> LDL-C 顯著超出目標值 ${gap.toFixed(0)} mg/dL。建議在最大耐受劑量 Statin 之外，考慮合併使用 <strong>Ezetimibe</strong> 或 <strong>PCSK9 抑制劑</strong>，以達到更積極的降脂目標。`
-        : `<strong>專家建議（2025 共識）：</strong> LDL-C 超出目標值 ${gap.toFixed(0)} mg/dL。建議評估藥物順從性，並考慮調升 Statin 劑量或更換為強效型 Statin（如 Rosuvastatin / Atorvastatin）。`;
+        ? `<strong>專家建議（2025 共識）：</strong> LDL-C 顯著超出目標值 ${gap.toFixed(0)} mg/dL。建議在最大耐受劑量 Statin 之外，考慮合併使用 <strong>Ezetimibe</strong> 或 <strong>PCSK9 抑制劑</strong>。`
+        : `<strong>專家建議（2025 共識）：</strong> LDL-C 超出目標值 ${gap.toFixed(0)} mg/dL。建議評估藥物順從性，考慮調升 Statin 劑量或更換為強效型 Statin（Rosuvastatin / Atorvastatin）。`;
     }
 
     return {
@@ -394,21 +388,14 @@
     };
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // 3. UI 輔助函數
-  // ═══════════════════════════════════════════════════════════════
-  function updatePatientCard(patientId) {
-    const risk = PATIENT_RISK[patientId] || {};
-    const avatarMap = { low:"🟢", high:"🟡", veryhigh:"🔴", unknown:"⚪" };
-    document.getElementById("patientAvatar").textContent = avatarMap[risk.level] || "👤";
-    document.getElementById("patientName").textContent  = risk.name  || patientId;
-    document.getElementById("patientMeta").textContent  = risk.desc  || "—";
-    document.getElementById("patientIdChip").textContent = `風險：${risk.label || "—"}  ｜  ID：${patientId}`;
-    document.getElementById("mRisk").textContent = risk.icon ? `${risk.icon} ${risk.label}` : "—";
-  }
-
-  function updateMetrics(ldl, target) {
+  // ═══════════════════════════════════════════════════════════
+  // 更新 metrics
+  // ═══════════════════════════════════════════════════════════
+  function updateMetrics(ldl, target, riskKey) {
     const row = document.getElementById("metricsRow");
+    const risk = RISK_CONFIG[riskKey];
+    document.getElementById("mRisk").textContent = risk ? `${risk.icon} ${risk.label}` : "—";
+
     if (ldl === null || ldl === undefined || target === null) { row.style.display = "none"; return; }
     row.style.display = "grid";
     const gap = ldl - target;
@@ -425,79 +412,59 @@
     btn.textContent = panel.classList.contains("open") ? "▼ 隱藏原始 FHIR 資源" : "▶ 顯示原始 FHIR 資源";
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // 4. 使用 SMART client 載入 FHIR 資料
-  // ═══════════════════════════════════════════════════════════════
-  async function loadPatientData(client, patientId) {
-    updatePatientCard(patientId);
-
-    document.getElementById("decisionResult").innerHTML = `
-      <div class="loading-state">
-        <div class="spinner"></div>
-        <div class="loading-text">讀取個案 ${patientId} 的臨床資料...</div>
-      </div>`;
+  // ═══════════════════════════════════════════════════════════
+  // 核心：用真實 FHIR Patient ID 查詢資料
+  // ═══════════════════════════════════════════════════════════
+  async function loadFhirData(client, fhirPatientId, riskKey) {
+    const decisionEl = document.getElementById("decisionResult");
+    decisionEl.innerHTML = `<div class="loading-state"><div class="spinner"></div><div class="loading-text">讀取 Patient/${fhirPatientId} 的臨床資料...</div></div>`;
     document.getElementById("metricsRow").style.display = "none";
 
+    // ── Patient ───────────────────────────────────────────
+    let pJson = null;
     try {
-      // ── Patient ───────────────────────────────────────────
-      let pJson = null;
-      try {
-        pJson = await client.request(`Patient/${patientId}`);
-        document.getElementById("debugPatient").textContent = JSON.stringify(pJson, null, 2);
-        if (pJson && pJson.name && pJson.name[0]) {
-          const n = pJson.name[0];
-          const fullName = n.text || [n.family, ...(n.given || [])].filter(Boolean).join(" ");
-          if (fullName.trim()) document.getElementById("patientName").textContent = fullName;
-        }
-      } catch(e) {
-        document.getElementById("debugPatient").textContent = `Patient 查無結果 (404 / 錯誤):\n${e}`;
-      }
-
-      // ── LDL Observation ───────────────────────────────────
-      let ldl = null;
-      try {
-        const oJson = await client.request(
-          `Observation?patient=${patientId}&code=${LOINC_LDL}&_sort=-date&_count=1`
-        );
-        document.getElementById("debugObs").textContent = JSON.stringify(oJson, null, 2);
-        if (oJson && oJson.entry && oJson.entry.length > 0) {
-          const obs = oJson.entry[0].resource;
-          ldl = obs.valueQuantity ? obs.valueQuantity.value : null;
-        }
-      } catch(e) {
-        document.getElementById("debugObs").textContent = `Observation 查無結果:\n${e}`;
-      }
-
-      // ── CDS 決策 ──────────────────────────────────────────
-      const result = evaluateStatinRecommendation(ldl, patientId);
-      document.getElementById("decisionResult").innerHTML = result.html;
-      updateMetrics(result.ldl, result.target);
-      document.getElementById("debugSection").style.display = "block";
-
+      pJson = await client.request(`Patient/${fhirPatientId}`);
+      document.getElementById("debugPatient").textContent = JSON.stringify(pJson, null, 2);
     } catch(e) {
-      console.error("FHIR 載入錯誤:", e);
-      document.getElementById("decisionResult").innerHTML = `
-        <div class="error-state">
-          <h3>❌ FHIR 資料載入失敗</h3>
-          <p>${e.message || String(e)}</p>
-          <p style="margin-top:10px;font-size:13px;">請確認 SMART Launcher 設定正確，或嘗試重新授權。</p>
-        </div>`;
+      document.getElementById("debugPatient").textContent = `Patient 查詢失敗:\n${e}`;
     }
+    renderPatientCard(pJson);
+
+    // ── LDL Observation ───────────────────────────────────
+    let ldl = null;
+    try {
+      const oJson = await client.request(
+        `Observation?patient=${fhirPatientId}&code=${LOINC_LDL}&_sort=-date&_count=1`
+      );
+      document.getElementById("debugObs").textContent = JSON.stringify(oJson, null, 2);
+      if (oJson && oJson.entry && oJson.entry.length > 0) {
+        const obs = oJson.entry[0].resource;
+        ldl = obs.valueQuantity ? obs.valueQuantity.value : null;
+      }
+    } catch(e) {
+      document.getElementById("debugObs").textContent = `Observation 查詢失敗:\n${e}`;
+    }
+
+    // ── CDS 決策 ──────────────────────────────────────────
+    const result = evaluateStatinRecommendation(ldl, riskKey);
+    decisionEl.innerHTML = result.html;
+    updateMetrics(result.ldl, result.target, riskKey);
+    document.getElementById("debugSection").style.display = "block";
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // 5. ⭐ 關鍵：FHIR.oauth2.ready() — 完成 Authorization Code 換 Token
-  //    原始 index.html 完全缺少此段，導致永遠拿不到 access_token
-  // ═══════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════
+  // 主程式：FHIR.oauth2.ready()
+  // ═══════════════════════════════════════════════════════════
   document.addEventListener("DOMContentLoaded", () => {
     FHIR.oauth2.ready()
       .then(client => {
+        _smartClient = client;
 
-        // ── 更新授權狀態 badge ──
+        // 授權成功
         document.getElementById("authBadge").innerHTML =
           `<span class="dot" style="background:#4ade80;"></span> OAuth 授權成功`;
 
-        // ── 顯示 context 資訊列 ──
+        // Context bar
         document.getElementById("contextBar").style.display = "flex";
         const url = client.state.serverUrl || "—";
         document.getElementById("ctxServer").textContent = url.length > 45 ? url.slice(0,45)+"…" : url;
@@ -507,37 +474,41 @@
         document.getElementById("ctxEncounter").textContent =
           client.encounter?.id || client.state.tokenResponse?.encounter || "—";
 
-        console.log("✅ SMART ready. State:", client.state);
+        // ⭐ 關鍵：使用 EHR 給的真實 FHIR Patient ID，不用 dropdown 的 case-xxx
+        _fhirPatientId = client.patient?.id;
 
-        // ── 初始化 selector ──
-        const select = document.getElementById("patientSelect");
-
-        // 若 EHR 帶入 patient context，嘗試自動對應
-        if (client.patient?.id) {
-          const opts = Array.from(select.options);
-          const match = opts.find(o => o.value === client.patient.id);
-          if (match) select.value = client.patient.id;
-          console.log("EHR Patient context:", client.patient.id);
+        if (!_fhirPatientId) {
+          document.getElementById("decisionResult").innerHTML = `
+            <div class="error-state">
+              <h3>⚠️ 未取得病人 context</h3>
+              <p>SMART launch 未提供 patient context。請確認 Launcher 已選擇病人，且 scope 包含 <code>launch/patient</code> 或 <code>launch</code>。</p>
+            </div>`;
+          return;
         }
 
-        loadPatientData(client, select.value);
+        const riskSelect = document.getElementById("riskSelect");
 
-        select.addEventListener("change", e => loadPatientData(client, e.target.value));
+        // 初次載入
+        loadFhirData(client, _fhirPatientId, riskSelect.value);
+
+        // 切換風險分層時重新計算（不重新查 FHIR，只重新跑 CDS 邏輯）
+        riskSelect.addEventListener("change", () => {
+          loadFhirData(client, _fhirPatientId, riskSelect.value);
+        });
       })
       .catch(err => {
         console.error("OAuth ready() 失敗:", err);
         document.getElementById("authBadge").innerHTML =
           `<span class="dot" style="background:#f87171; animation:none;"></span> 授權失敗`;
-
         document.getElementById("decisionResult").innerHTML = `
           <div class="error-state">
             <h3>❌ SMART OAuth 授權失敗</h3>
             <p><strong>錯誤訊息：</strong> <code>${err.message || String(err)}</code></p>
             <p style="margin-top:12px;">
-              <strong>常見原因與解法：</strong><br>
-              1. 未從 SMART Launcher 啟動 → 請先開啟 <code>launch.html</code><br>
-              2. <code>redirectUri</code> 與 Launcher 設定不符 → 確認兩者完全一致<br>
-              3. Authorization Code 已過期（5 分鐘）→ 請重新點選 Launcher 的 Launch App
+              <strong>常見原因：</strong><br>
+              1. 未從 SMART Launcher 啟動 → 請先經過 <code>launch.html</code><br>
+              2. <code>redirectUri</code> 不符 → Launcher 與程式碼須完全一致<br>
+              3. Authorization Code 已過期（5 分鐘）→ 請重新 Launch
             </p>
           </div>`;
       });
