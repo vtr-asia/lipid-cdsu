@@ -14,31 +14,20 @@
       background-color: #f0f2f5; 
     }
     .header { text-align: center; margin-bottom: 30px; }
-    .patient-select { 
-      margin-bottom: 20px; 
-      padding: 20px; 
-      border-radius: 12px; 
-      background: white; 
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+    .patient-info-card {
+      background: white;
+      padding: 15px 25px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      border-left: 5px solid #3498db;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
-    label { font-weight: 600; color: #2c3e50; display: block; margin-bottom: 10px; }
-    select { 
-      padding: 12px; 
-      font-size: 16px; 
-      border: 2px solid #3498db; 
-      border-radius: 8px; 
-      width: 100%; 
-      max-width: 500px; 
-      cursor: pointer; 
-    }
-    
     .decision { 
       color: white; 
       padding: 30px; 
       border-radius: 16px; 
       margin-bottom: 20px; 
       box-shadow: 0 8px 16px rgba(0,0,0,0.15); 
-      transition: all 0.3s ease; 
     }
     .status-good { background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%); }
     .status-warning { background: linear-gradient(135deg, #f39c12 0%, #f1c40f 100%); }
@@ -60,8 +49,14 @@
       overflow: auto; 
       max-height: 300px; 
     }
-    h3 { margin-top: 0; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 10px; }
-    .loading { color: #666; font-style: italic; }
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: #eee;
+      font-size: 12px;
+      margin-right: 5px;
+    }
   </style>
 </head>
 <body>
@@ -71,171 +66,122 @@
     <p>依據 2025 台灣血脂管理專家共識建議</p>
   </div>
 
-  <div class="patient-select">
-    <label for="patientSelect">🔍 選取或讀取臨床個案：</label>
-    <select id="patientSelect">
-      <option value="case-001">Case 1: 陳建國 (一般風險 - 目標 130)</option>
-      <option value="case-002">Case 2: 林淑芬 (高風險/糖尿病 - 目標 100)</option>
-      <option value="case-003">Case 3: 李大衛 (非常高風險/MI - 目標 70)</option>
-      <option value="case-004">Case 4: 張阿中 (極高風險/洗腎 - 目標 70)</option>
-      <option value="case-005">Case 5: 查無此人 (數據缺失測試)</option>
-    </select>
+  <div id="patientCard" class="patient-info-card" style="display:none;">
+    <h2 id="displayName">載入中...</h2>
+    <div id="displayMeta"></div>
   </div>
 
-  <div id="decisionResult"></div>
+  <div id="decisionResult">
+    <div class="decision status-unknown">⏳ 正在初始化 SMART on FHIR 授權流程...</div>
+  </div>
 
-  <div id="debugInfo" class="debug-panel">
+  <div class="debug-panel">
     <div>
-      <h3>📄 Patient 資源 (JSON)</h3>
-      <pre id="patient">載入中...</pre>
+      <h3>📄 Patient & Conditions (JSON)</h3>
+      <pre id="patientRaw">等待資料...</pre>
     </div>
     <div>
-      <h3>🧪 Observation 資源 (JSON) - LDL-C</h3>
-      <pre id="obs">載入中...</pre>
+      <h3>🧪 LDL-C Observation (JSON)</h3>
+      <pre id="obsRaw">等待資料...</pre>
     </div>
   </div>
 
   <script>
-    // 1. 風險設定常數（保持不變）
-    const PATIENT_RISK = {
-      "case-001": { level: "low", name: "陳建國 (一般風險)", target: 130, desc: "無重大心血管疾病、無糖尿病、無慢性腎病" },
-      "case-002": { level: "high", name: "林淑芬 (高風險)", target: 100, desc: "糖尿病病史 (DM)" },
-      "case-003": { level: "veryhigh", name: "李大衛 (非常高風險)", target: 70, desc: "曾患急性心肌梗塞 (History of MI)" },
-      "case-004": { level: "veryhigh", name: "張阿中 (極高風險)", target: 70, desc: "慢性腎病第五期 (CKD Stage 5/洗腎)" },
-      "case-005": { level: "unknown", name: "查無此人 (數據測試)", target: null, desc: "新進病人，尚無血脂紀錄" }
+    // 1. 2025 台灣血脂指引邏輯設定
+    const GUIDELINES = {
+      VERY_HIGH: { target: 70, desc: "非常高風險 (曾患心肌梗塞/急性冠心症/洗腎)" },
+      HIGH: { target: 100, desc: "高風險 (糖尿病或慢性腎病)" },
+      NORMAL: { target: 130, desc: "一般風險" }
     };
 
     const LOINC_LDL = "13457-7";
 
-    // 2. 核心決策邏輯（保持不變）
-    function evaluateStatinRecommendation(ldl, patientId) {
-      const risk = PATIENT_RISK[patientId] || PATIENT_RISK["case-005"];
-      if (ldl === null || ldl === undefined) {
+    // 2. 核心決策引擎
+    function runCDSEngine(ldl, riskProfile) {
+      if (ldl === null) {
         return `
           <div class="decision status-unknown">
-            <div style="font-size: 24px; font-weight: bold;">❓ 臨床資訊不足</div>
-            <div style="font-size: 18px;">找不到 LDL-C 檢驗紀錄 (LOINC: ${LOINC_LDL})</div>
-            <hr style="border: 0.5px solid rgba(255,255,255,0.3); margin: 15px 0;">
-            <div style="text-align: left;">
-              <strong>個案背景：</strong> ${risk.desc}<br><br>
-              <strong>建議：</strong> 目前無法判定是否達標。建議醫師立即安排血脂抽血檢驗。
-            </div>
+            <h2>❓ 數據缺失</h2>
+            <p>找不到 LDL-C 檢驗紀錄。建議立即安排抽血。</p>
+            <p><small>風險判定依據：${riskProfile.desc}</small></p>
           </div>`;
       }
 
-      const target = risk.target;
-      const isAchieved = ldl < target;
-      const isSeverelyHigh = ldl >= target * 1.2;
-
-      let statusClass = "status-good";
-      let title = "✅ 良好控制";
-      let drugAdvice = "目前治療效果理想，請維持良好生活習慣與現有藥物。";
-
-      if (!isAchieved) {
-        statusClass = isSeverelyHigh ? "status-danger" : "status-warning";
-        title = isSeverelyHigh ? "🚨 立即加強治療" : "⚠️ 尚未達標";
-        drugAdvice = isSeverelyHigh 
-          ? `<strong>專家建議：</strong> 數值顯著高於目標值。建議在最大耐受劑量 Statin 之外，考慮合併 Ezetimibe 或 PCSK9 抑制劑。`
-          : `<strong>專家建議：</strong> 尚未達標。建議評估藥物順從性，並考慮調升 Statin 劑量或更換強效型 Statin。`;
-      }
+      const isAchieved = ldl < riskProfile.target;
+      const isSeverelyHigh = ldl >= riskProfile.target * 1.2;
+      
+      let statusClass = isAchieved ? "status-good" : (isSeverelyHigh ? "status-danger" : "status-warning");
+      let title = isAchieved ? "✅ 控制良好" : (isSeverelyHigh ? "🚨 建議積極介入" : "⚠️ 尚未達標");
+      let advice = isAchieved ? "請維持目前治療與健康生活。" : 
+                   (isSeverelyHigh ? "數值顯著超標，建議考慮合併 Ezetimibe 或 PCSK9 抑制劑。" : "建議調升 Statin 劑量或加強衛教。");
 
       return `
         <div class="decision ${statusClass}">
-          <div style="font-size: 24px; font-weight: bold;">${title}</div>
-          <div style="font-size: 18px;">目前 LDL-C: ${ldl} mg/dL | 目標: < ${target} mg/dL</div>
-          <hr style="border: 0.5px solid rgba(255,255,255,0.3); margin: 15px 0;">
-          <div style="text-align: left;">
-            <strong>個案背景：</strong> ${risk.desc}<br><br>
-            ${drugAdvice}
-          </div>
+          <h2>${title}</h2>
+          <div style="font-size: 1.2em;">目前 LDL-C: <strong>${ldl}</strong> mg/dL | 目標值: < <strong>${riskProfile.target}</strong></div>
+          <hr style="opacity:0.3; margin: 15px 0;">
+          <p><strong>風險評估：</strong>${riskProfile.desc}</p>
+          <p><strong>臨床建議：</strong>${advice}</p>
         </div>`;
     }
 
-    // 3. 從 Bundle 提取最新 LDL 值
-    function extractLdlValue(bundle) {
-      if (!bundle || !bundle.entry || bundle.entry.length === 0) return null;
-      const obs = bundle.entry[0].resource;
-      return obs.valueQuantity ? obs.valueQuantity.value : null;
+    // 3. 判定風險等級 (自動化關鍵)
+    function determineRisk(conditions = []) {
+      const condText = JSON.stringify(conditions).toLowerCase();
+      
+      // 判定為非常高風險的情境 (MI, Dialysis)
+      if (condText.includes("myocardial infarction") || condText.includes("dialysis") || condText.includes("n18.5")) {
+        return GUIDELINES.VERY_HIGH;
+      }
+      // 判定為高風險 (Diabetes)
+      if (condText.includes("diabetes") || condText.includes("e11")) {
+        return GUIDELINES.HIGH;
+      }
+      return GUIDELINES.NORMAL;
     }
 
-    // 4. SMART on FHIR 主流程
-    async function initSMART() {
-      const patientEl = document.getElementById("patient");
-      const obsEl = document.getElementById("obs");
-      const decisionEl = document.getElementById("decisionResult");
-
-      patientEl.textContent = "正在從 SMART EHR 取得資料...";
-      obsEl.textContent = "正在查詢 LDL-C Observation...";
-
+    // 4. SMART 主程式
+    async function startApp() {
       try {
         const client = await FHIR.oauth2.ready();
+        const patientId = client.patient.id;
 
-        // 取得 launch context 中的 Patient ID（最重要！）
-        let patientId = client.patient ? client.patient.id : null;
-        if (!patientId) {
-          patientId = client.getPatientId ? client.getPatientId() : null;
-        }
+        // 並行抓取 Patient, Conditions, Observations (優化效能)
+        const [patient, conditions, observations] = await Promise.all([
+          client.request(`Patient/${patientId}`),
+          client.request(`Condition?patient=${patientId}`),
+          client.request(`Observation?patient=${patientId}&code=${LOINC_LDL}&_sort=-date&_count=1`)
+        ]);
 
-        if (!patientId) {
-          throw new Error("無法從 EHR 取得病人 ID，請確認 launch 參數");
-        }
+        // 顯示原始資料供測試參考
+        document.getElementById("patientRaw").textContent = JSON.stringify({patient, conditions}, null, 2);
+        document.getElementById("obsRaw").textContent = JSON.stringify(observations, null, 2);
 
-        // 取得 Patient 資源
-        const pJson = await client.request(`Patient/${patientId}`);
-        patientEl.textContent = JSON.stringify(pJson, null, 2);
-
-        // 取得最新 LDL Observation
-        const oJson = await client.request({
-          url: `Observation?patient=${patientId}&code=${LOINC_LDL}&_sort=-date&_count=1`
-        });
-        obsEl.textContent = JSON.stringify(oJson, null, 2);
+        // 更新 UI 基本資訊
+        const name = patient.name ? patient.name[0].given.join(" ") : "匿名病人";
+        document.getElementById("patientCard").style.display = "block";
+        document.getElementById("displayName").textContent = `👤 患者：${name}`;
+        document.getElementById("displayMeta").innerHTML = `<span class="tag">ID: ${patientId}</span><span class="tag">Gender: ${patient.gender}</span>`;
 
         // 執行決策
-        const ldl = extractLdlValue(oJson);
-        decisionEl.innerHTML = evaluateStatinRecommendation(ldl, "case-001"); // 這裡可依實際 patientId 對應風險，或固定測試用
+        const riskProfile = determineRisk(conditions.entry);
+        const latestLdl = (observations.entry && observations.entry.length > 0) 
+                          ? observations.entry[0].resource.valueQuantity.value 
+                          : null;
 
-        console.log("✅ SMART 授權成功，Patient ID:", patientId);
+        document.getElementById("decisionResult").innerHTML = runCDSEngine(latestLdl, riskProfile);
 
       } catch (err) {
-        console.error("❌ SMART 初始化失敗:", err);
-        const errMsg = err.message || err;
-        patientEl.textContent = `錯誤: ${errMsg}`;
-        obsEl.textContent = `錯誤: ${errMsg}`;
-        decisionEl.innerHTML = `
+        console.error("SMART Error:", err);
+        document.getElementById("decisionResult").innerHTML = `
           <div class="decision status-danger">
-            ❌ 授權失敗或無法取得臨床資料<br>
-            <small>${errMsg}<br>請重新從 SMART Launcher 啟動 App</small>
+            <h3>❌ 授權失敗</h3>
+            <p>${err.message || "請確保您是從 SMART Launcher 啟動此 App"}</p>
           </div>`;
       }
     }
 
-    // 5. Standalone 測試模式（原本的下拉選單）
-    function loadStandalone(patientId) {
-      // 你可以保留原本的 fetch 邏輯，或簡化只顯示決策
-      const decisionEl = document.getElementById("decisionResult");
-      decisionEl.innerHTML = evaluateStatinRecommendation(null, patientId); // 先顯示「資訊不足」供測試
-      document.getElementById("patient").textContent = "Standalone 測試模式 - 未連接 FHIR";
-      document.getElementById("obs").textContent = "Standalone 測試模式 - 未連接 FHIR";
-    }
-
-    // 6. 初始化
-    document.addEventListener("DOMContentLoaded", () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const hasLaunchParams = urlParams.has("iss") || urlParams.has("code") || urlParams.has("state");
-
-      if (hasLaunchParams) {
-        // 從 launch.html 過來，走 SMART 流程
-        initSMART();
-      } else {
-        // 直接開 index.html → Standalone 測試模式
-        const select = document.getElementById("patientSelect");
-        loadStandalone(select.value);
-
-        select.addEventListener("change", (e) => {
-          loadStandalone(e.target.value);
-        });
-      }
-    });
+    document.addEventListener("DOMContentLoaded", startApp);
   </script>
 </body>
 </html>
