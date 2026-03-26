@@ -112,6 +112,29 @@
     .metric-value { font-size: 30px; font-weight: 800; color: var(--primary); margin-top: 6px; }
     .metric-unit  { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
 
+    /* ── Clinical Data Section (新增) ── */
+    .data-section {
+      background: var(--card); border-radius: var(--radius);
+      padding: 22px 28px; box-shadow: var(--shadow);
+      margin-bottom: 24px; border: 1px solid var(--border);
+    }
+    .section-title {
+      font-size: 18px; font-weight: 700; color: var(--primary);
+      margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+    }
+    .data-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;
+    }
+    .data-item {
+      background: #f8fafc; border: 1px solid var(--border); border-radius: 10px;
+      padding: 14px; font-size: 14px;
+    }
+    .data-label { color: var(--text-muted); font-size: 12px; font-weight: 600; margin-bottom: 8px; display: block; }
+    .data-value { font-weight: 600; color: var(--text); line-height: 1.5; }
+    .med-list { max-height: 280px; overflow-y: auto; font-size: 13px; }
+    .med-item { padding: 8px 0; border-bottom: 1px solid #eee; }
+    .med-item:last-child { border-bottom: none; }
+
     /* ── Decision ── */
     .decision {
       border-radius: var(--radius); padding: 28px 32px; margin-bottom: 24px;
@@ -171,6 +194,7 @@
       .decision { padding: 20px; }
       .decision-title { font-size: 21px; }
       .debug-panel { grid-template-columns: 1fr; }
+      .data-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -179,7 +203,7 @@
   <div class="topbar">
     <div>
       <div class="topbar-title">🩺 台灣血脂 CDS 決策支援系統</div>
-      <div class="topbar-sub">依據 2025 台灣血脂管理專家共識建議</div>
+      <div class="topbar-sub">依據 2025 台灣血脂管理專家共識建議 • 完整臨床資料顯示</div>
     </div>
     <div class="auth-badge" id="authBadge">
       <span class="dot"></span> OAuth 授權中...
@@ -195,7 +219,7 @@
       <div class="context-chip">📋 Encounter：<span id="ctxEncounter">—</span></div>
     </div>
 
-    <!-- 病人資訊卡（從 FHIR 讀取） -->
+    <!-- 病人資訊卡 -->
     <div class="patient-card">
       <div class="patient-avatar" id="patientAvatar">👤</div>
       <div class="patient-info">
@@ -205,7 +229,7 @@
       </div>
     </div>
 
-    <!-- 風險等級選擇器（與 FHIR ID 分離，只控制 CDS 判斷邏輯） -->
+    <!-- 風險等級選擇器 -->
     <div class="risk-selector">
       <label for="riskSelect">⚙️ 臨床風險分層設定（人工指定）：</label>
       <select id="riskSelect">
@@ -241,6 +265,33 @@
       </div>
     </div>
 
+    <!-- 新增：臨床資料總覽（Patient / Observation / Condition / Medication） -->
+    <div class="data-section" id="clinicalDataSection" style="display:none;">
+      <div class="section-title">📋 臨床資料總覽</div>
+      <div class="data-grid">
+        <!-- 生命徵象 -->
+        <div class="data-item">
+          <div class="data-label">生命徵象（最新）</div>
+          <div class="data-value" id="vitalsDisplay">載入中...</div>
+        </div>
+        <!-- 實驗室檢驗 -->
+        <div class="data-item">
+          <div class="data-label">實驗室檢驗（最新血脂與相關）</div>
+          <div class="data-value" id="labsDisplay">載入中...</div>
+        </div>
+        <!-- 診斷 -->
+        <div class="data-item">
+          <div class="data-label">主要診斷（Condition）</div>
+          <div class="data-value" id="conditionsDisplay">載入中...</div>
+        </div>
+        <!-- 用藥 -->
+        <div class="data-item">
+          <div class="data-label">目前用藥紀錄（MedicationRequest / MedicationStatement）</div>
+          <div class="med-list" id="medsDisplay">載入中...</div>
+        </div>
+      </div>
+    </div>
+
     <!-- 決策結果 -->
     <div id="decisionResult">
       <div class="loading-state">
@@ -268,7 +319,7 @@
 
   <script>
   // ═══════════════════════════════════════════════════════════
-  // 風險設定（與 FHIR ID 完全分離）
+  // 風險設定 + LOINC 碼
   // ═══════════════════════════════════════════════════════════
   const RISK_CONFIG = {
     "low":          { icon:"🟢", label:"一般風險",   target:130, desc:"無重大心血管疾病、無糖尿病、無慢性腎病" },
@@ -277,12 +328,37 @@
     "veryhigh_ckd": { icon:"🔴", label:"極高風險",   target:70,  desc:"慢性腎病第五期（CKD Stage 5 / 洗腎）" }
   };
 
-  const LOINC_LDL = "13457-7";
-  let _fhirPatientId = null;   // 真實 FHIR Patient ID（來自 EHR context）
+  const LOINC_LDL   = "13457-7";
+  const LOINC_SYSTOLIC = "8480-6";
+  const LOINC_DIASTOLIC = "8462-4";
+  const LOINC_WEIGHT = "29463-7";
+  const LOINC_HEIGHT = "8302-2";
+  const LOINC_BMI    = "39156-5";
+  const LOINC_TC     = "2093-3";
+  const LOINC_HDL    = "2085-9";
+  const LOINC_TG     = "2571-8";
+  const LOINC_HBA1C  = "4548-4";
+
+  let _fhirPatientId = null;
   let _smartClient   = null;
 
   // ═══════════════════════════════════════════════════════════
-  // 解析 FHIR Patient 資源，顯示病人資訊卡
+  // 輔助函式：取得最新 Observation
+  // ═══════════════════════════════════════════════════════════
+  async function getLatestObservation(client, patientId, loincCode) {
+    try {
+      const res = await client.request(
+        `Observation?patient=${patientId}&code=${loincCode}&_sort=-date&_count=1`
+      );
+      if (res.entry && res.entry.length > 0) {
+        return res.entry[0].resource;
+      }
+    } catch(e) {}
+    return null;
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // 解析 Patient 資源
   // ═══════════════════════════════════════════════════════════
   function renderPatientCard(pJson) {
     if (!pJson) {
@@ -291,7 +367,6 @@
       return;
     }
 
-    // 姓名
     let name = "（未提供姓名）";
     if (pJson.name && pJson.name.length > 0) {
       const n = pJson.name[0];
@@ -299,7 +374,6 @@
     }
     document.getElementById("patientName").textContent = name || "（未提供姓名）";
 
-    // 基本資料
     const gender = pJson.gender === "male" ? "男性" : pJson.gender === "female" ? "女性" : pJson.gender || "—";
     const dob    = pJson.birthDate || "—";
     let age      = "—";
@@ -309,7 +383,6 @@
     }
     document.getElementById("patientMeta").textContent = `性別：${gender}　出生：${dob}　年齡：${age}`;
 
-    // chips
     const chips = document.getElementById("patientChips");
     chips.innerHTML = "";
     const addChip = (text, cls) => {
@@ -322,20 +395,18 @@
     if (pJson.gender) addChip(gender, "chip-gray");
     if (pJson.birthDate) addChip(age, "chip-gray");
 
-    // 識別碼（MRN 等）
     if (pJson.identifier) {
       pJson.identifier.slice(0,2).forEach(id => {
         if (id.value) addChip(id.value, "chip-gray");
       });
     }
 
-    // 頭像
     document.getElementById("patientAvatar").textContent =
       pJson.gender === "male" ? "👨" : pJson.gender === "female" ? "👩" : "👤";
   }
 
   // ═══════════════════════════════════════════════════════════
-  // CDS 決策邏輯
+  // CDS 決策邏輯（維持原版）
   // ═══════════════════════════════════════════════════════════
   function evaluateStatinRecommendation(ldl, riskKey) {
     const risk = RISK_CONFIG[riskKey] || RISK_CONFIG["low"];
@@ -389,7 +460,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  // 更新 metrics
+  // 更新指標卡
   // ═══════════════════════════════════════════════════════════
   function updateMetrics(ldl, target, riskKey) {
     const row = document.getElementById("metricsRow");
@@ -405,22 +476,116 @@
     document.getElementById("mGap").style.color    = gap > 0 ? "var(--danger-light)" : "var(--good)";
   }
 
-  function toggleDebug() {
-    const panel = document.getElementById("debugPanel");
-    const btn   = document.getElementById("debugToggle");
-    panel.classList.toggle("open");
-    btn.textContent = panel.classList.contains("open") ? "▼ 隱藏原始 FHIR 資源" : "▶ 顯示原始 FHIR 資源";
+  // ═══════════════════════════════════════════════════════════
+  // 新增：載入所有臨床資料（Patient 已處理，此處處理 Observation / Condition / Medication）
+  // ═══════════════════════════════════════════════════════════
+  async function loadAllClinicalData(client, patientId) {
+    const section = document.getElementById("clinicalDataSection");
+
+    // 1. 生命徵象（血壓、體重、身高、BMI）
+    let vitalsHTML = "";
+    const sysObs = await getLatestObservation(client, patientId, LOINC_SYSTOLIC);
+    const diaObs = await getLatestObservation(client, patientId, LOINC_DIASTOLIC);
+    if (sysObs && diaObs) {
+      vitalsHTML += `血壓：${sysObs.valueQuantity?.value || '—'} / ${diaObs.valueQuantity?.value || '—'} mmHg<br>`;
+    } else if (sysObs) {
+      vitalsHTML += `收縮壓：${sysObs.valueQuantity?.value || '—'} mmHg<br>`;
+    }
+
+    const weightObs = await getLatestObservation(client, patientId, LOINC_WEIGHT);
+    if (weightObs) vitalsHTML += `體重：${weightObs.valueQuantity?.value || '—'} kg<br>`;
+
+    const heightObs = await getLatestObservation(client, patientId, LOINC_HEIGHT);
+    if (heightObs) vitalsHTML += `身高：${heightObs.valueQuantity?.value || '—'} cm<br>`;
+
+    const bmiObs = await getLatestObservation(client, patientId, LOINC_BMI);
+    if (bmiObs) vitalsHTML += `BMI：${bmiObs.valueQuantity?.value || '—'}`;
+
+    document.getElementById("vitalsDisplay").innerHTML = vitalsHTML || "無最新生命徵象紀錄";
+
+    // 2. 實驗室檢驗（血脂 + HbA1c）
+    let labsHTML = "";
+    const labCodes = [LOINC_LDL, LOINC_TC, LOINC_HDL, LOINC_TG, LOINC_HBA1C];
+    for (const code of labCodes) {
+      const obs = await getLatestObservation(client, patientId, code);
+      if (obs) {
+        const value = obs.valueQuantity?.value || '—';
+        let label = "";
+        if (code === LOINC_LDL) label = "LDL-C";
+        else if (code === LOINC_TC) label = "總膽固醇 (TC)";
+        else if (code === LOINC_HDL) label = "HDL-C";
+        else if (code === LOINC_TG) label = "三酸甘油酯 (TG)";
+        else if (code === LOINC_HBA1C) label = "糖化血色素 (HbA1c)";
+        labsHTML += `<strong>${label}：</strong> ${value} ${obs.valueQuantity?.unit || 'mg/dL'}<br>`;
+      }
+    }
+    document.getElementById("labsDisplay").innerHTML = labsHTML || "無最新實驗室檢驗紀錄";
+
+    // 3. 診斷 (Condition)
+    let condHTML = "";
+    try {
+      const condRes = await client.request(`Condition?patient=${patientId}&_count=15&_sort=-onset-date`);
+      if (condRes.entry && condRes.entry.length > 0) {
+        condRes.entry.forEach(entry => {
+          const c = entry.resource;
+          const display = c.code?.coding?.[0]?.display || c.code?.text || "未知診斷";
+          const status = (c.clinicalStatus?.coding?.[0]?.code || "").toLowerCase();
+          const chipClass = status === "active" ? "chip-red" : "chip-gray";
+          condHTML += `<span class="chip ${chipClass}" style="margin:2px 4px 2px 0;">${display}</span>`;
+        });
+      } else {
+        condHTML = "無診斷紀錄";
+      }
+    } catch(e) {
+      condHTML = "Condition 查詢失敗";
+    }
+    document.getElementById("conditionsDisplay").innerHTML = condHTML;
+
+    // 4. 用藥 (MedicationRequest + MedicationStatement)
+    let medsHTML = "";
+    try {
+      // 先查 MedicationRequest
+      const reqRes = await client.request(`MedicationRequest?patient=${patientId}&_count=20&_sort=-authoredOn`);
+      if (reqRes.entry) {
+        reqRes.entry.forEach(entry => {
+          const m = entry.resource;
+          const name = m.medicationCodeableConcept?.coding?.[0]?.display || m.medicationReference?.display || "未知藥物";
+          const status = m.status || "unknown";
+          const date = m.authoredOn ? new Date(m.authoredOn).toLocaleDateString('zh-TW') : "";
+          medsHTML += `<div class="med-item"><strong>${name}</strong> <span class="chip ${status==='active'?'chip-green':'chip-gray'}">${status}</span> ${date}</div>`;
+        });
+      }
+
+      // 再補 MedicationStatement（如果有）
+      const stmtRes = await client.request(`MedicationStatement?patient=${patientId}&_count=10&_sort=-effectiveDateTime`);
+      if (stmtRes.entry) {
+        stmtRes.entry.forEach(entry => {
+          const m = entry.resource;
+          const name = m.medicationCodeableConcept?.coding?.[0]?.display || "未知藥物";
+          const status = m.status || "unknown";
+          medsHTML += `<div class="med-item"><strong>${name}</strong> <span class="chip ${status==='active'?'chip-green':'chip-gray'}">${status} (Statement)</span></div>`;
+        });
+      }
+
+      if (!medsHTML) medsHTML = "無目前用藥紀錄";
+    } catch(e) {
+      medsHTML = "用藥查詢失敗";
+    }
+    document.getElementById("medsDisplay").innerHTML = medsHTML;
+
+    section.style.display = "block";
   }
 
   // ═══════════════════════════════════════════════════════════
-  // 核心：用真實 FHIR Patient ID 查詢資料
+  // 核心載入函式
   // ═══════════════════════════════════════════════════════════
   async function loadFhirData(client, fhirPatientId, riskKey) {
     const decisionEl = document.getElementById("decisionResult");
-    decisionEl.innerHTML = `<div class="loading-state"><div class="spinner"></div><div class="loading-text">讀取 Patient/${fhirPatientId} 的臨床資料...</div></div>`;
+    decisionEl.innerHTML = `<div class="loading-state"><div class="spinner"></div><div class="loading-text">讀取 Patient/${fhirPatientId} 的完整臨床資料...</div></div>`;
     document.getElementById("metricsRow").style.display = "none";
+    document.getElementById("clinicalDataSection").style.display = "none";
 
-    // ── Patient ───────────────────────────────────────────
+    // Patient
     let pJson = null;
     try {
       pJson = await client.request(`Patient/${fhirPatientId}`);
@@ -430,7 +595,7 @@
     }
     renderPatientCard(pJson);
 
-    // ── LDL Observation ───────────────────────────────────
+    // LDL-C
     let ldl = null;
     try {
       const oJson = await client.request(
@@ -445,26 +610,35 @@
       document.getElementById("debugObs").textContent = `Observation 查詢失敗:\n${e}`;
     }
 
-    // ── CDS 決策 ──────────────────────────────────────────
+    // CDS 決策
     const result = evaluateStatinRecommendation(ldl, riskKey);
     decisionEl.innerHTML = result.html;
     updateMetrics(result.ldl, result.target, riskKey);
+
+    // 新增：載入完整臨床資料
+    await loadAllClinicalData(client, fhirPatientId);
+
     document.getElementById("debugSection").style.display = "block";
   }
 
+  function toggleDebug() {
+    const panel = document.getElementById("debugPanel");
+    const btn   = document.getElementById("debugToggle");
+    panel.classList.toggle("open");
+    btn.textContent = panel.classList.contains("open") ? "▼ 隱藏原始 FHIR 資源" : "▶ 顯示原始 FHIR 資源";
+  }
+
   // ═══════════════════════════════════════════════════════════
-  // 主程式：FHIR.oauth2.ready()
+  // 主程式：FHIR OAuth2 ready
   // ═══════════════════════════════════════════════════════════
   document.addEventListener("DOMContentLoaded", () => {
     FHIR.oauth2.ready()
       .then(client => {
         _smartClient = client;
 
-        // 授權成功
         document.getElementById("authBadge").innerHTML =
           `<span class="dot" style="background:#4ade80;"></span> OAuth 授權成功`;
 
-        // Context bar
         document.getElementById("contextBar").style.display = "flex";
         const url = client.state.serverUrl || "—";
         document.getElementById("ctxServer").textContent = url.length > 45 ? url.slice(0,45)+"…" : url;
@@ -474,7 +648,6 @@
         document.getElementById("ctxEncounter").textContent =
           client.encounter?.id || client.state.tokenResponse?.encounter || "—";
 
-        // ⭐ 關鍵：使用 EHR 給的真實 FHIR Patient ID，不用 dropdown 的 case-xxx
         _fhirPatientId = client.patient?.id;
 
         if (!_fhirPatientId) {
@@ -488,10 +661,10 @@
 
         const riskSelect = document.getElementById("riskSelect");
 
-        // 初次載入
+        // 初次載入完整資料
         loadFhirData(client, _fhirPatientId, riskSelect.value);
 
-        // 切換風險分層時重新計算（不重新查 FHIR，只重新跑 CDS 邏輯）
+        // 風險等級變更時重新計算（含所有臨床資料）
         riskSelect.addEventListener("change", () => {
           loadFhirData(client, _fhirPatientId, riskSelect.value);
         });
