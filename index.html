@@ -57,6 +57,16 @@
       font-size: 12px;
       margin-right: 5px;
     }
+    .reset-btn {
+      float: right;
+      padding: 5px 10px;
+      background: #e74c3c;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
   </style>
 </head>
 <body>
@@ -67,6 +77,7 @@
   </div>
 
   <div id="patientCard" class="patient-info-card" style="display:none;">
+    <button class="reset-btn" onclick="resetSession()">強制重新授權</button>
     <h2 id="displayName">載入中...</h2>
     <div id="displayMeta"></div>
   </div>
@@ -87,7 +98,6 @@
   </div>
 
   <script>
-    // 1. 2025 台灣血脂指引邏輯設定
     const GUIDELINES = {
       VERY_HIGH: { target: 70, desc: "非常高風險 (曾患心肌梗塞/急性冠心症/洗腎)" },
       HIGH: { target: 100, desc: "高風險 (糖尿病或慢性腎病)" },
@@ -96,13 +106,19 @@
 
     const LOINC_LDL = "13457-7";
 
-    // 2. 核心決策引擎
+    function resetSession() {
+      sessionStorage.clear();
+      alert("已清除 Session，請關閉此視窗並從模擬器重新啟動。");
+      window.close();
+    }
+
     function runCDSEngine(ldl, riskProfile) {
       if (ldl === null) {
         return `
           <div class="decision status-unknown">
             <h2>❓ 數據缺失</h2>
             <p>找不到 LDL-C 檢驗紀錄。建議立即安排抽血。</p>
+            <hr style="opacity:0.3; margin: 15px 0;">
             <p><small>風險判定依據：${riskProfile.desc}</small></p>
           </div>`;
       }
@@ -125,46 +141,45 @@
         </div>`;
     }
 
-    // 3. 判定風險等級 (自動化關鍵)
     function determineRisk(conditions = []) {
       const condText = JSON.stringify(conditions).toLowerCase();
-      
-      // 判定為非常高風險的情境 (MI, Dialysis)
+      // 判定邏輯：優先檢查非常高風險
       if (condText.includes("myocardial infarction") || condText.includes("dialysis") || condText.includes("n18.5")) {
         return GUIDELINES.VERY_HIGH;
       }
-      // 判定為高風險 (Diabetes)
       if (condText.includes("diabetes") || condText.includes("e11")) {
         return GUIDELINES.HIGH;
       }
       return GUIDELINES.NORMAL;
     }
 
-    // 4. SMART 主程式
     async function startApp() {
+      const urlParams = new URLSearchParams(window.location.search);
+      
+      // 【關鍵修改】如果 URL 帶有 code，表示這是新的啟動，強制清除舊快取
+      if (urlParams.has("code")) {
+        sessionStorage.clear();
+      }
+
       try {
         const client = await FHIR.oauth2.ready();
         const patientId = client.patient.id;
 
-        // 並行抓取 Patient, Conditions, Observations (優化效能)
         const [patient, conditions, observations] = await Promise.all([
           client.request(`Patient/${patientId}`),
           client.request(`Condition?patient=${patientId}`),
           client.request(`Observation?patient=${patientId}&code=${LOINC_LDL}&_sort=-date&_count=1`)
         ]);
 
-        // 顯示原始資料供測試參考
         document.getElementById("patientRaw").textContent = JSON.stringify({patient, conditions}, null, 2);
         document.getElementById("obsRaw").textContent = JSON.stringify(observations, null, 2);
 
-        // 更新 UI 基本資訊
-        const name = patient.name ? patient.name[0].given.join(" ") : "匿名病人";
+        const name = patient.name ? (patient.name[0].text || patient.name[0].given.join(" ")) : "匿名病人";
         document.getElementById("patientCard").style.display = "block";
         document.getElementById("displayName").textContent = `👤 患者：${name}`;
         document.getElementById("displayMeta").innerHTML = `<span class="tag">ID: ${patientId}</span><span class="tag">Gender: ${patient.gender}</span>`;
 
-        // 執行決策
-        const riskProfile = determineRisk(conditions.entry);
+        const riskProfile = determineRisk(conditions.entry || []);
         const latestLdl = (observations.entry && observations.entry.length > 0) 
                           ? observations.entry[0].resource.valueQuantity.value 
                           : null;
@@ -173,10 +188,12 @@
 
       } catch (err) {
         console.error("SMART Error:", err);
+        // 如果錯誤是因為過期，引導重新啟動
         document.getElementById("decisionResult").innerHTML = `
           <div class="decision status-danger">
-            <h3>❌ 授權失敗</h3>
-            <p>${err.message || "請確保您是從 SMART Launcher 啟動此 App"}</p>
+            <h3>❌ 授權失效</h3>
+            <p>請從 SMART Launcher 重新點擊 Launch 啟動應用程式。</p>
+            <p><small>Error: ${err.message || "Session timeout"}</small></p>
           </div>`;
       }
     }
