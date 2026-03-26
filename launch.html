@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>台灣血脂 CDS - 系統啟動中</title>
+  <title>台灣血脂 CDS - 啟動中...</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
   
+  <!-- fhirclient 穩定版本 -->
   <script src="https://cdn.jsdelivr.net/npm/fhirclient@2.6.3/build/fhir-client.js"></script>
   
   <style>
@@ -25,17 +26,28 @@
       margin: 0;
       text-align: center;
     }
-    .loader-container { padding: 20px; }
+    .loader-container { 
+      padding: 40px; 
+      max-width: 420px;
+    }
     .loader {
-      border: 4px solid rgba(255, 255, 255, 0.1);
+      border: 5px solid rgba(255, 255, 255, 0.15);
       border-left-color: var(--primary);
       border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 20px;
+      width: 48px;
+      height: 48px;
+      animation: spin 1.2s linear infinite;
+      margin: 0 auto 24px;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes spin { 
+      to { transform: rotate(360deg); } 
+    }
+    .error-message {
+      color: #ff6b6b;
+      margin-top: 20px;
+      font-size: 15px;
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -43,35 +55,47 @@
   <div class="loader-container">
     <div class="loader"></div>
     <h2>正在連線至 FHIR 醫療資訊系統...</h2>
-    <p>請稍候，我們正在為您準備臨床決策輔助工具 (CDS)</p>
+    <p>請稍候，我們正在準備您的臨床決策輔助工具（台灣血脂 CDS）</p>
+    
+    <div id="errorMsg" class="error-message"></div>
   </div>
 
   <script>
     /**
-     * SMART on FHIR 啟動邏輯
-     * 說明：此頁面負責與 EHR (Sandbox) 進行 OAuth2 握手
+     * 修正版 launch.html - 適合 GitHub Pages + SMART Sandbox
+     * - 使用完整 redirectUri
+     * - 強制 PKCE S256
+     * - 優化 scope
+     * - 改善錯誤顯示
      */
+
+    const redirectUri = "https://vtr-asia.github.io/lipid-cdsu/index.html";
+
     FHIR.oauth2.authorize({
-      // 1. Client ID: 請確保此 ID 與您在 SmartHealthIT Sandbox 設定的一致
-      // 提醒：如果是公用 App (Public Client)，不需要也不應提供 clientSecret
-      clientId: "cc344727-6f90-496c-94fd-c7829aa9a51d", 
+      clientId: "cc344727-6f90-496c-94fd-c7829aa9a51d",
 
-      // 2. Scope: 定義 App 需要存取的資料權限
-      // launch: 允許從 EHR 啟動
-      // patient/*.read: 讀取當前病人的所有相關資源（Patient, Observation, Condition 等）
-      scope: "launch openid fhirUser patient/*.read",
+      // EHR Launch 推薦 scopes（已包含 launch/patient）
+      scope: "launch launch/patient openid fhirUser patient/Patient.read patient/Observation.read patient/MedicationRequest.read patient/Condition.read",
 
-      // 3. Redirect URI: 授權成功後跳轉的頁面
-      // 必須在 Sandbox 的 "Redirect URIs" 清單中註冊
-      redirectUri: "index.html", 
+      // 完整絕對路徑（重要！）
+      redirectUri: redirectUri,
 
-      // 4. 安全設定：使用 PKCE (Proof Key for Code Exchange)
-      // 這是目前單頁應用程式 (SPA) 最安全的授權方式
-      pkceMode: "ifSupported"
+      // 強制使用安全的 PKCE S256
+      pkceMode: "S256"
 
     }).catch(err => {
-      // 靜默錯誤處理：僅在開發者控制台記錄，不干擾使用者介面
-      console.error("FHIR Authorization Error:", err);
+      console.error("❌ FHIR OAuth 授權啟動失敗:", err);
+
+      // 在畫面上顯示友善錯誤提示
+      const errorDiv = document.getElementById("errorMsg");
+      errorDiv.style.display = "block";
+      errorDiv.innerHTML = `
+        授權啟動失敗<br>
+        <small>錯誤: ${err.message || err}</small><br><br>
+        請關閉此視窗，並從 
+        <a href="https://launch.smarthealthit.org/" target="_blank" style="color:#4da6ff;">SMART Launcher</a> 
+        重新啟動 App。
+      `;
     });
   </script>
 </body>
