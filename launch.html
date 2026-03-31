@@ -1,150 +1,106 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>啟動中 — 糖尿病共照網儀表板</title>
-  <script src="https://cdn.jsdelivr.net/npm/fhirclient@2.5.2/build/fhir-client.js"></script>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      background: linear-gradient(135deg, #0f172a 0%, #1e2937 100%);
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: #94a3b8;
-      overflow: hidden;
-    }
-    .container {
-      text-align: center;
-      max-width: 420px;
-      padding: 40px 24px;
-    }
-    .spinner {
-      width: 64px;
-      height: 64px;
-      border: 6px solid #334155;
-      border-top-color: #3b82f6;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 32px;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    h1 {
-      font-size: 1.35rem;
-      font-weight: 600;
-      color: #e2e8f0;
-      margin-bottom: 12px;
-    }
-    p {
-      font-size: 1rem;
-      margin: 8px 0;
-      line-height: 1.5;
-    }
-    .status {
-      font-size: 0.875rem;
-      color: #64748b;
-      font-family: ui-monospace, monospace;
-      margin-top: 16px;
-    }
-    .error-box {
-      display: none;
-      margin-top: 24px;
-      padding: 16px 20px;
-      background-color: #7f1d1d;
-      border-radius: 12px;
-      color: #fecaca;
-      text-align: left;
-      font-size: 0.9rem;
-      line-height: 1.5;
-    }
-    .error-box a {
-      color: #fca5a5;
-      text-decoration: underline;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>糖尿病共照網 - 授權啟動中</title>
+    <script src="https://cdn.jsdelivr.net/npm/fhirclient@2/build/fhir-client.js"></script>
+    <style>
+        body {
+            font-family: "Microsoft JhengHei", "PingFang TC", "Helvetica Neue", sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            text-align: center;
+            max-width: 500px;
+            padding: 40px 30px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        .icon {
+            font-size: 4rem;
+            color: #3498db;
+            margin-bottom: 20px;
+        }
+        h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        p {
+            color: #7f8c8d;
+            line-height: 1.6;
+        }
+        .info {
+            margin-top: 25px;
+            padding: 15px;
+            background-color: #f1f8ff;
+            border-radius: 8px;
+            font-size: 0.95rem;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <div class="spinner"></div>
-    
-    <h1>糖尿病共照網儀表板</h1>
-    <p>正在啟動 SMART on FHIR 授權流程...</p>
-    <p class="status" id="status">Initializing OAuth2 + PKCE • 請稍候</p>
 
-    <!-- 錯誤訊息區塊 -->
-    <div id="error-box" class="error-box">
-      <strong>❌ 啟動失敗</strong><br>
-      <span id="error-message"></span>
+<div class="container">
+    <div class="icon">
+        <i class="fas fa-heartbeat"></i>
     </div>
-  </div>
+    <h2>糖尿病共照網</h2>
+    <h3>授權啟動中...</h3>
+    <p>請稍候，系統正在轉導至授權伺服器進行 OAuth 驗證。</p>
+    
+    <div class="info">
+        <strong>Client ID：</strong><br>
+        cc344727-6f90-496c-94fd-c7829aa9a51d
+    </div>
 
-  <script>
-    'use strict';
+    <p style="margin-top: 30px; font-size: 0.9rem; color: #95a5a6;">
+        如果長時間沒有反應，請檢查網路或重新整理頁面
+    </p>
+</div>
 
-    async function launchApp() {
-      const statusEl = document.getElementById('status');
-      const errorBox = document.getElementById('error-box');
-      const errorMsg = document.getElementById('error-message');
-
-      try {
-        // 取得 URL 中的 iss 和 launch 參數（支援 EHR launch）
-        const urlParams = new URLSearchParams(window.location.search);
-        const iss = urlParams.get('iss');
-        const launchParam = urlParams.get('launch');
-
-        if (iss) {
-          statusEl.textContent = `連線至 EHR: ${iss}`;
-        } else {
-          statusEl.textContent = `使用 SMART Health IT 沙盒`;
-        }
-
-        // SMART on FHIR 授權設定（推薦配置）
-        const authorizeConfig = {
-          client_id: "cc344727-6f90-496c-94fd-c7829aa9a51d",
-          scope: "launch patient/*.read openid fhirUser profile patient/Observation.read patient/Procedure.read",
-          redirect_uri: "https://vtr-asia.github.io/index.html",
-          pkce: true,
-        };
-
-        // 如果有 iss 或 launch 參數則加入
-        if (iss) authorizeConfig.iss = iss;
-        if (launchParam) authorizeConfig.launch = launchParam;
-
-        console.log('🚀 SMART Launch 啟動中...', authorizeConfig);
-
-        // 開始授權流程
-        await FHIR.oauth2.authorize(authorizeConfig);
-
-      } catch (err) {
-        console.error('❌ Launch 錯誤:', err);
-
-        // 顯示錯誤訊息
-        statusEl.style.display = 'none';
-        errorBox.style.display = 'block';
+<script>
+    // 正式環境純前端測試版 launch.html
+    FHIR.oauth2.authorize({
+        "client_id": "cc344727-6f90-496c-94fd-c7829aa9a51d",
         
-        errorMsg.innerHTML = `
-          ${err.message || '未知錯誤'}<br><br>
-          <small>
-            常見原因：<br>
-            • redirect_uri 設定不一致<br>
-            • client_id 錯誤<br>
-            • 瀏覽器阻擋彈出視窗<br><br>
-            請前往 
-            <a href="https://launch.smarthealthit.org/" target="_blank">SMART Launcher</a> 
-            重新授權測試
-          </small>
+        // 建議 scope（已包含病人資料、用藥紀錄等必要權限）
+        "scope": "openid profile fhirUser patient/*.read launch online_access MedicationRequest.read",
+        
+        // 重要：redirect_uri 必須與您在授權伺服器註冊的完全一致
+        "redirect_uri": window.location.origin + "/index.html",
+        
+        "completeInTarget": true
+    })
+    .catch(function(err) {
+        console.error("Launch Error:", err);
+        
+        document.querySelector('.container').innerHTML = `
+            <div style="color: #e74c3c; text-align: center;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 3.5rem; margin-bottom: 20px;"></i>
+                <h2>授權啟動失敗</h2>
+                <p>${err.message || err}</p>
+                <p style="margin-top: 20px; font-size: 0.95rem;">
+                    可能原因：<br>
+                    • Client ID 未正確註冊<br>
+                    • redirect_uri 設定不符<br>
+                    • scope 未獲得授權
+                </p>
+                <button onclick="window.location.reload()" 
+                        style="margin-top: 20px; padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    重新嘗試
+                </button>
+            </div>
         `;
-      }
-    }
+    });
+</script>
 
-    // 頁面載入後立即執行
-    window.addEventListener('load', launchApp);
-  </script>
 </body>
 </html>
