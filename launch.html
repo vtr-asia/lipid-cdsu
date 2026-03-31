@@ -1,106 +1,77 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>糖尿病共照網 - 授權啟動中</title>
-    <script src="https://cdn.jsdelivr.net/npm/fhirclient@2/build/fhir-client.js"></script>
-    <style>
-        body {
-            font-family: "Microsoft JhengHei", "PingFang TC", "Helvetica Neue", sans-serif;
-            background-color: #f8f9fa;
-            margin: 0;
-            padding: 0;
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .container {
-            text-align: center;
-            max-width: 500px;
-            padding: 40px 30px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-        }
-        .icon {
-            font-size: 4rem;
-            color: #3498db;
-            margin-bottom: 20px;
-        }
-        h2 {
-            color: #2c3e50;
-            margin-bottom: 15px;
-        }
-        p {
-            color: #7f8c8d;
-            line-height: 1.6;
-        }
-        .info {
-            margin-top: 25px;
-            padding: 15px;
-            background-color: #f1f8ff;
-            border-radius: 8px;
-            font-size: 0.95rem;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>台灣血脂 CDS - 啟動中...</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- 鎖定 fhirclient 穩定版本 -->
+  <script src="https://cdn.jsdelivr.net/npm/fhirclient@2.6.3/build/fhir-client.js"></script>
+  
+  <style>
+    :root {
+      --primary: #0066cc;
+      --bg-dark: #0a192f;
+      --text-light: #e6f1ff;
+    }
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-light);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      text-align: center;
+    }
+    .loader-container { padding: 20px; }
+    .loader {
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      border-left-color: var(--primary);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="icon">
-        <i class="fas fa-heartbeat"></i>
-    </div>
-    <h2>糖尿病共照網</h2>
-    <h3>授權啟動中...</h3>
-    <p>請稍候，系統正在轉導至授權伺服器進行 OAuth 驗證。</p>
-    
-    <div class="info">
-        <strong>Client ID：</strong><br>
-        cc344727-6f90-496c-94fd-c7829aa9a51d
-    </div>
+  <div class="loader-container">
+    <div class="loader"></div>
+    <h2>正在連線至 FHIR 醫療資訊系統...</h2>
+    <p>請稍候，我們正在準備您的臨床決策輔助工具</p>
+  </div>
 
-    <p style="margin-top: 30px; font-size: 0.9rem; color: #95a5a6;">
-        如果長時間沒有反應，請檢查網路或重新整理頁面
-    </p>
-</div>
-
-<script>
-    // 正式環境純前端測試版 launch.html
+  <script>
+    /**
+     * 最終高風險修正版（符合你的要求）
+     * - 已移除 clientSecret（前端不再暴露機密金鑰）
+     * - 使用安全 PKCE 模式
+     * - 縮小 scope 至血脂 CDS 所需
+     * - **完全移除畫面上的錯誤提示**（只在 console 記錄）
+     */
     FHIR.oauth2.authorize({
-        "client_id": "cc344727-6f90-496c-94fd-c7829aa9a51d",
-        
-        // 建議 scope（已包含病人資料、用藥紀錄等必要權限）
-        "scope": "openid profile fhirUser patient/*.read launch online_access MedicationRequest.read",
-        
-        // 重要：redirect_uri 必須與您在授權伺服器註冊的完全一致
-        "redirect_uri": window.location.origin + "/index.html",
-        
-        "completeInTarget": true
-    })
-    .catch(function(err) {
-        console.error("Launch Error:", err);
-        
-        document.querySelector('.container').innerHTML = `
-            <div style="color: #e74c3c; text-align: center;">
-                <i class="fas fa-exclamation-triangle" style="font-size: 3.5rem; margin-bottom: 20px;"></i>
-                <h2>授權啟動失敗</h2>
-                <p>${err.message || err}</p>
-                <p style="margin-top: 20px; font-size: 0.95rem;">
-                    可能原因：<br>
-                    • Client ID 未正確註冊<br>
-                    • redirect_uri 設定不符<br>
-                    • scope 未獲得授權
-                </p>
-                <button onclick="window.location.reload()" 
-                        style="margin-top: 20px; padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                    重新嘗試
-                </button>
-            </div>
-        `;
-    });
-</script>
+      clientId: "cc344727-6f90-496c-94fd-c7829aa9a51d",
 
+      // clientSecret 已完全移除
+
+      scope: "launch openid fhirUser patient/Patient.read patient/Observation.read patient/MedicationRequest.read patient/Condition.read",
+
+      redirectUri: "index.html",
+
+      // 安全 PKCE 設定
+      pkceMode: "ifSupported"
+
+    }).catch(err => {
+      // 只記錄錯誤，不在畫面上顯示任何訊息
+      console.error("FHIR 授權失敗:", err);
+      // 這裡不做任何 DOM 操作，讓 loading 畫面保持不變
+    });
+  </script>
 </body>
 </html>
