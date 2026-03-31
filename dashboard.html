@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy"
+  content="default-src 'self' https:; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; font-src https://fonts.gstatic.com; connect-src https:; img-src 'self' data:;">
+<title>🩺 醫師端臨床決策系統 | SMART on FHIR</title>
+<script src="https://cdn.jsdelivr.net/npm/fhirclient@2.6.3/build/fhir-client.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="cds-core.js"></script>
+<style>
+:root {
+  --primary: #0a4f8c; --primary-light: #1a6fbc; --primary-dim: #e8f2fb;
+  --accent: #00b4d8;
+  --good: #1a7f4b; --good-dim: #dcfce7;
+  --warn: #b45309; --warn-dim: #fef3c7;
+  --danger: #991b1b; --danger-dim: #fee2e2;
+  --bg: #f0f4f8; --card: #ffffff; --text: #1a2332; --text-muted: #5a6a7e;
+  --border: #dde3ec;
+  --radius: 14px; --radius-sm: 10px;
+  --shadow-sm: 0 1px 4px rgba(10,79,140,0.07);
+  --shadow: 0 4px 16px rgba(10,79,140,0.10);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; }
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 280px; min-height: 100vh;
+  background: linear-gradient(160deg, #062d5a 0%, #0a4f8c 60%, #1a6fbc 100%);
+  color: white; padding: 24px 20px;
+  box-shadow: 3px 0 20px rgba(0,0,0,0.25);
+  display: flex; flex-direction: column; gap: 18px;
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+}
+.sidebar-logo { text-align: center; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.15); }
+.sidebar-logo-icon { font-size: 36px; margin-bottom: 6px; }
+.sidebar-logo-title { font-size: 15px; font-weight: 700; }
+.sidebar-logo-sub { font-size: 11px; opacity: 0.65; margin-top: 2px; }
+
+.patient-panel { background: rgba(255,255,255,0.12); border-radius: 12px; padding: 16px; border: 1px solid rgba(255,255,255,0.18); }
+.patient-avatar-lg { font-size: 44px; text-align: center; margin-bottom: 8px; }
+.patient-name-lg { font-size: 20px; font-weight: 700; text-align: center; line-height: 1.2; }
+.patient-meta-lg { font-size: 12px; opacity: 0.8; text-align: center; line-height: 1.7; margin-top: 4px; }
+
+.cds-panel { background: rgba(255,255,255,0.10); border-radius: 12px; padding: 14px 16px; border: 1px solid rgba(255,255,255,0.15); }
+.cds-panel-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; opacity: 0.7; margin-bottom: 10px; }
+.risk-badge-sidebar { border-radius: 8px; padding: 10px 14px; font-size: 14px; font-weight: 700; text-align: center; margin-bottom: 10px; }
+.ldl-display { text-align: center; }
+.ldl-num-lg { font-size: 42px; font-weight: 900; font-family: 'DM Mono', monospace; line-height: 1; }
+.ldl-unit-lg { font-size: 12px; opacity: 0.75; margin-top: 2px; }
+.ldl-target-lg { font-size: 12px; opacity: 0.85; margin-top: 6px; }
+.ldl-gap-lg { font-size: 13px; font-weight: 700; margin-top: 4px; }
+
+.sidebar-nav { display: flex; flex-direction: column; gap: 4px; margin-top: auto; }
+.sidebar-nav-item { background: rgba(255,255,255,0.08); border-radius: 8px; padding: 8px 12px; font-size: 13px; cursor: pointer; border: none; color: white; font-family: inherit; text-align: left; display: flex; align-items: center; gap: 8px; transition: background 0.15s; text-decoration: none; }
+.sidebar-nav-item:hover { background: rgba(255,255,255,0.2); }
+
+/* ── Main content ── */
+.content { flex: 1; padding: 24px 28px; overflow-y: auto; min-width: 0; }
+
+.status-bar { background: white; padding: 10px 18px; border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); margin-bottom: 20px; display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 500; border: 1px solid var(--border); }
+
+.card { background: var(--card); border-radius: var(--radius); padding: 20px 24px; box-shadow: var(--shadow); margin-bottom: 20px; border: 1px solid var(--border); }
+.card-title { font-size: 15px; font-weight: 700; color: var(--primary); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.card-title-sm { font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+
+/* ── Dashboard grid ── */
+.dashboard-grid { display: grid; grid-template-columns: 3fr 2fr; gap: 20px; }
+
+/* ── Vitals grid ── */
+.vitals-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.vital-item { background: var(--bg); border-radius: var(--radius-sm); padding: 14px; border: 1px solid var(--border); }
+.vital-label { font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.vital-value { font-size: 20px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--primary); margin-top: 4px; }
+.vital-unit { font-size: 11px; color: var(--text-muted); }
+.vital-date { font-size: 10px; color: #94a3b8; margin-top: 2px; }
+
+/* ── Lipid panel ── */
+.lipid-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; }
+.lipid-item { background: var(--bg); border-radius: var(--radius-sm); padding: 12px; border: 1px solid var(--border); text-align: center; }
+.lipid-label { font-size: 11px; color: var(--text-muted); font-weight: 700; }
+.lipid-val { font-size: 20px; font-weight: 900; font-family: 'DM Mono', monospace; color: var(--primary); margin: 4px 0 2px; }
+.lipid-unit { font-size: 10px; color: var(--text-muted); }
+
+/* ── Charts ── */
+.chart-wrap { position: relative; height: 200px; }
+
+/* ── Medication list ── */
+.med-list { max-height: 180px; overflow-y: auto; }
+.med-item { padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; display: flex; align-items: flex-start; gap: 8px; }
+.med-item:last-child { border-bottom: none; }
+.med-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+.med-status-active { background: #22c55e; }
+.med-status-other  { background: #94a3b8; }
+
+/* ── CDS Decision (compact) ── */
+.cds-compact { border-radius: 12px; padding: 16px 20px; color: white; font-size: 13.5px; line-height: 1.7; }
+.status-good    { background: linear-gradient(135deg,#1a7f4b,#16a34a); }
+.status-warning { background: linear-gradient(135deg,#92400e,#b45309); }
+.status-danger  { background: linear-gradient(135deg,#7f1d1d,#991b1b); }
+.status-unknown { background: linear-gradient(135deg,#334155,#475569); }
+.cds-compact-title { font-size: 17px; font-weight: 800; margin-bottom: 8px; }
+
+/* ── Decision action form ── */
+.action-label { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; margin-top: 14px; }
+.action-check-list { display: flex; flex-direction: column; gap: 6px; }
+.action-check-item { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+.action-check-item input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
+select.action-select { width: 100%; padding: 9px 12px; border-radius: 8px; border: 1.5px solid var(--border); font-size: 13px; font-family: inherit; background: white; color: var(--text); }
+select.action-select:focus { outline: none; border-color: var(--primary-light); }
+textarea.action-note { width: 100%; min-height: 72px; padding: 10px 12px; border-radius: 8px; border: 1.5px solid var(--border); font-size: 13px; font-family: inherit; resize: vertical; }
+textarea.action-note:focus { outline: none; border-color: var(--primary-light); }
+
+.btn-submit { background: linear-gradient(135deg, var(--good), #22a861); color: white; border: none; padding: 13px; border-radius: 10px; cursor: pointer; width: 100%; font-size: 15px; font-weight: 700; margin-top: 14px; font-family: inherit; transition: filter 0.15s; }
+.btn-submit:hover { filter: brightness(1.08); }
+.btn-submit:disabled { opacity: 0.5; cursor: not-allowed; filter: none; }
+.submit-result { margin-top: 10px; padding: 10px 14px; border-radius: 8px; font-size: 13px; display: none; }
+.submit-ok   { background: var(--good-dim); color: #166534; border: 1px solid #bbf7d0; }
+.submit-fail { background: var(--danger-dim); color: #991b1b; border: 1px solid #fecaca; }
+
+/* ── Loading / Error ── */
+.loading-state { text-align: center; padding: 40px; }
+.spinner { border: 3px solid var(--border); border-left-color: var(--primary-light); border-radius: 50%; width: 34px; height: 34px; animation: spin 0.8s linear infinite; margin: 0 auto 14px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.error-state { background: var(--danger-dim); border: 1.5px solid #fca5a5; border-radius: var(--radius); padding: 20px 24px; }
+.error-state h3 { color: #dc2626; font-size: 16px; margin-bottom: 8px; }
+.error-state p { font-size: 13px; color: #7f1d1d; line-height: 1.75; }
+.error-state code { background: rgba(255,255,255,0.6); padding: 2px 5px; border-radius: 4px; font-size: 12px; }
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.dot-pulse { width: 8px; height: 8px; border-radius: 50%; background: #fbbf24; display: inline-block; animation: pulse 2s infinite; }
+
+/* ── Print ── */
+@media print {
+  .sidebar { display: none; }
+  .content { padding: 0; }
+  .btn-submit, .action-check-list, .action-note { display: none !important; }
+  body { background: white; }
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  body { flex-direction: column; }
+  .sidebar { width: 100%; height: auto; position: static; flex-direction: row; flex-wrap: wrap; }
+  .dashboard-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── Sidebar ── -->
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-icon">🩺</div>
+    <div class="sidebar-logo-title">台灣血脂 CDS</div>
+    <div class="sidebar-logo-sub">2025 專家共識建議</div>
+  </div>
+
+  <div class="patient-panel">
+    <div class="patient-avatar-lg" id="patientAvatar">👤</div>
+    <div class="patient-name-lg" id="patientName">載入中...</div>
+    <div class="patient-meta-lg" id="patientMeta"></div>
+  </div>
+
+  <div class="cds-panel">
+    <div class="cds-panel-title">⚡ 即時 CDS 摘要</div>
+    <div class="risk-badge-sidebar" id="riskBadgeSidebar">—</div>
+    <div class="ldl-display">
+      <div class="ldl-num-lg" id="ldlNumSidebar">—</div>
+      <div class="ldl-unit-lg">LDL-C mg/dL</div>
+      <div class="ldl-target-lg" id="ldlTargetSidebar">目標 —</div>
+      <div class="ldl-gap-lg" id="ldlGapSidebar"></div>
+    </div>
+  </div>
+
+  <div class="sidebar-nav">
+    <a class="sidebar-nav-item" href="index.html">📋 CDS 決策頁面</a>
+    <a class="sidebar-nav-item" href="#" onclick="window.print();return false;">🖨️ 列印報告</a>
+  </div>
+</div>
+
+<!-- ── Main content ── -->
+<div class="content">
+
+  <div class="status-bar">
+    <span id="authDot" class="dot-pulse"></span>
+    <span id="authStatus">OAuth 授權中...</span>
+    <span style="margin-left:auto; font-size:12px; color:#94a3b8;" id="serverInfo"></span>
+  </div>
+
+  <div class="dashboard-grid">
+
+    <!-- ── 左欄 ── -->
+    <div>
+
+      <!-- 最新生理數值 -->
+      <div class="card">
+        <div class="card-title">📊 最新生理指標</div>
+        <div class="vitals-grid">
+          <div class="vital-item">
+            <div class="vital-label">血壓 SBP/DBP</div>
+            <div class="vital-value" id="latestBP">—</div>
+            <div class="vital-unit">mmHg</div>
+            <div class="vital-date" id="bpDate"></div>
+          </div>
+          <div class="vital-item">
+            <div class="vital-label">血糖（隨機）</div>
+            <div class="vital-value" id="latestBG">—</div>
+            <div class="vital-unit">mg/dL</div>
+            <div class="vital-date" id="bgDate"></div>
+          </div>
+          <div class="vital-item">
+            <div class="vital-label">HbA1c</div>
+            <div class="vital-value" id="latestHba1c">—</div>
+            <div class="vital-unit">%</div>
+            <div class="vital-date" id="hba1cDate"></div>
+          </div>
+          <div class="vital-item">
+            <div class="vital-label">體重</div>
+            <div class="vital-value" id="latestWeight">—</div>
+            <div class="vital-unit">kg</div>
+            <div class="vital-date" id="weightDate"></div>
+          </div>
+          <div class="vital-item">
+            <div class="vital-label">肌酸酐 Cr</div>
+            <div class="vital-value" id="latestCr">—</div>
+            <div class="vital-unit">mg/dL</div>
+            <div class="vital-date" id="crDate"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 完整血脂面板 -->
+      <div class="card">
+        <div class="card-title">🧪 血脂完整面板</div>
+        <div class="lipid-grid">
+          <div class="lipid-item">
+            <div class="lipid-label">LDL-C</div>
+            <div class="lipid-val" id="dLdl">—</div>
+            <div class="lipid-unit">mg/dL</div>
+          </div>
+          <div class="lipid-item">
+            <div class="lipid-label">TC</div>
+            <div class="lipid-val" id="dTc">—</div>
+            <div class="lipid-unit">mg/dL</div>
+          </div>
+          <div class="lipid-item">
+            <div class="lipid-label">HDL-C</div>
+            <div class="lipid-val" id="dHdl">—</div>
+            <div class="lipid-unit">mg/dL</div>
+          </div>
+          <div class="lipid-item">
+            <div class="lipid-label">TG</div>
+            <div class="lipid-val" id="dTg">—</div>
+            <div class="lipid-unit">mg/dL</div>
+          </div>
+          <div class="lipid-item">
+            <div class="lipid-label">non-HDL</div>
+            <div class="lipid-val" id="dNonHdl">—</div>
+            <div class="lipid-unit">mg/dL</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LDL 趨勢 -->
+      <div class="card">
+        <div class="card-title">📈 LDL-C 歷史趨勢</div>
+        <div class="chart-wrap"><canvas id="ldlChart"></canvas></div>
+      </div>
+
+      <!-- 血壓趨勢 -->
+      <div class="card">
+        <div class="card-title">💉 血壓趨勢監控</div>
+        <div class="chart-wrap"><canvas id="bpChart"></canvas></div>
+      </div>
+
+    </div>
+
+    <!-- ── 右欄 ── -->
+    <div>
+
+      <!-- 用藥紀錄 -->
+      <div class="card">
+        <div class="card-title">💊 目前用藥紀錄</div>
+        <div class="med-list" id="medsDisplay">
+          <div class="loading-state"><div class="spinner"></div><div style="font-size:13px;color:#94a3b8;">載入中...</div></div>
+        </div>
+      </div>
+
+      <!-- CDS 決策（精簡版） -->
+      <div class="card">
+        <div class="card-title">🧠 臨床決策建議</div>
+        <div id="cdsCompact">
+          <div class="loading-state"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <!-- 醫囑確認 -->
+      <div class="card">
+        <div class="card-title">✍️ 醫囑確認</div>
+
+        <div class="action-label">建議處置（勾選執行項目）</div>
+        <div class="action-check-list">
+          <label class="action-check-item"><input type="checkbox" id="chkDiet"> 低飽和脂肪飲食 + 每週 150 分鐘有氧運動</label>
+          <label class="action-check-item"><input type="checkbox" id="chkLipid"> 複查血脂（3 個月後）</label>
+          <label class="action-check-item"><input type="checkbox" id="chkHba1c"> 複查 HbA1c / 血糖</label>
+          <label class="action-check-item"><input type="checkbox" id="chkCk"> 監測 CK、ALT（Statin 副作用評估）</label>
+          <label class="action-check-item"><input type="checkbox" id="chkAbpm"> 安排 24 小時血壓監測（ABPM）</label>
+          <label class="action-check-item"><input type="checkbox" id="chkEdu"> 安排衛教師血脂衛教</label>
+        </div>
+
+        <div class="action-label">藥物調整建議</div>
+        <select class="action-select" id="medAdjust">
+          <option value="">維持目前劑量</option>
+          <option value="statin_up">調升 Statin 至最大耐受劑量</option>
+          <option value="add_eze">加用 Ezetimibe 10 mg QD</option>
+          <option value="add_pcsk9">加用 PCSK9 抑制劑（Evolocumab / Alirocumab）</option>
+          <option value="switch_statin">換用 Rosuvastatin 或 Atorvastatin</option>
+          <option value="refer">轉介脂質專科門診</option>
+        </select>
+
+        <div class="action-label">醫師備註</div>
+        <textarea class="action-note" id="drNote" placeholder="輸入臨床判斷、追蹤計畫或特殊考量..."></textarea>
+
+        <button class="btn-submit" id="submitBtn" onclick="submitDecision()">✅ 確認並建立 FHIR Task</button>
+        <div class="submit-result" id="submitResult"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+let _smartClient = null;
+let _bpChart = null;
+let _ldlChart = null;
+let _patientId = null;
+let _riskKey = "low";
+let _cachedMedStat = {};
+let _ldlTarget = 130;
+
+// ── Chart helpers ─────────────────────────
+function initCharts() {
+  const baseOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: "top", labels: { font: { family: "'Noto Sans TC'" }, boxWidth: 12 } } },
+    scales: { y: { grid: { color: "#e0e8f2" } }, x: { grid: { display: false } } }
+  };
+  _ldlChart = new Chart(document.getElementById("ldlChart"), {
+    type: "line",
+    data: { labels: [], datasets: [
+      { label:"LDL-C (mg/dL)", data:[], borderColor:"#1a6fbc", backgroundColor:"rgba(26,111,188,0.07)", borderWidth:2.5, tension:0.35, fill:true, pointRadius:5 },
+      { label:"目標線", data:[], borderColor:"#22a861", borderDash:[6,4], borderWidth:1.5, pointRadius:0, fill:false }
+    ]},
+    options: baseOpts
+  });
+  _bpChart = new Chart(document.getElementById("bpChart"), {
+    type: "line",
+    data: { labels: [], datasets: [
+      { label:"SBP", data:[], borderColor:"#dc2626", tension:0.4, borderWidth:2 },
+      { label:"DBP", data:[], borderColor:"#3b82f6", tension:0.4, borderWidth:2 }
+    ]},
+    options: { ...baseOpts }
+  });
+}
+
+function updateLdlChart(history, target) {
+  if (!history || history.length < 2) return;
+  _ldlChart.data.labels = history.map(h => h.date);
+  _ldlChart.data.datasets[0].data = history.map(h => h.value);
+  _ldlChart.data.datasets[0].pointBackgroundColor = history.map(h => h.value < target ? "#22a861" : "#dc2626");
+  _ldlChart.data.datasets[1].data = Array(history.length).fill(target);
+  _ldlChart.data.datasets[1].label = `目標 < ${target} mg/dL`;
+  _ldlChart.update();
+}
+
+async function loadBpTrend(patientId) {
+  try {
+    const bundle = await CDS.queryLatestObs(_smartClient, patientId, CDS.LOINC.BP, 10);
+    if (!bundle?.entry) return;
+    const entries = [...bundle.entry].reverse();
+    const labels = [], sbpArr = [], dbpArr = [];
+    for (const e of entries) {
+      const bp = CDS.parseBP(e.resource);
+      const date = (e.resource.effectiveDateTime || "").slice(0, 10);
+      if (bp.sbp && bp.dbp) { labels.push(date); sbpArr.push(bp.sbp); dbpArr.push(bp.dbp); }
+    }
+    _bpChart.data.labels = labels;
+    _bpChart.data.datasets[0].data = sbpArr;
+    _bpChart.data.datasets[1].data = dbpArr;
+    _bpChart.update();
+  } catch(e) {}
+}
+
+// ── Sidebar CDS summary ───────────────────
+function updateSidebar(ldl, riskKey) {
+  const risk = CDS.RISK_CONFIG[riskKey];
+  if (!risk) return;
+  const target = risk.target;
+  const achieved = ldl != null && ldl < target;
+  const gap = ldl != null ? ldl - target : null;
+
+  // badge color
+  const bgColor = achieved ? "#166534" : gap != null && gap >= 20 ? "#7f1d1d" : "#78350f";
+  document.getElementById("riskBadgeSidebar").textContent = `${risk.icon} ${risk.label}`;
+  document.getElementById("riskBadgeSidebar").style.background = bgColor + "55";
+  document.getElementById("riskBadgeSidebar").style.border = `1px solid ${bgColor}88`;
+
+  document.getElementById("ldlNumSidebar").textContent  = ldl != null ? CDS.fmtLipid(ldl) : "—";
+  document.getElementById("ldlTargetSidebar").textContent = `目標 < ${target} mg/dL`;
+
+  const gapEl = document.getElementById("ldlGapSidebar");
+  if (gap != null) {
+    gapEl.textContent  = (gap > 0 ? "超出 +" : "達標 ") + gap.toFixed(1) + " mg/dL";
+    gapEl.style.color  = achieved ? "#4ade80" : "#fca5a5";
+  }
+}
+
+// ── Render meds ───────────────────────────
+function renderMeds(medBundle) {
+  const el = document.getElementById("medsDisplay");
+  if (!medBundle?.entry?.length) { el.innerHTML = `<div style="font-size:13px;color:#94a3b8;padding:8px 0;">目前無用藥記錄</div>`; return; }
+  el.innerHTML = medBundle.entry.map(e => {
+    const m = e.resource;
+    const name = m.medicationCodeableConcept?.coding?.[0]?.display
+      || m.medicationCodeableConcept?.text || "未知藥物";
+    const active = m.status === "active";
+    return `<div class="med-item">
+      <span class="med-status-dot ${active ? "med-status-active" : "med-status-other"}"></span>
+      <div>
+        <div style="font-weight:600;">${name}</div>
+        <div style="font-size:11px;color:#94a3b8;">${m.status || "—"} ${m.authoredOn ? "· " + m.authoredOn.slice(0,10) : ""}</div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+// ── Render CDS compact ────────────────────
+function renderCdsCompact(ldl, riskKey) {
+  const result = CDS.evaluateCDS(ldl, riskKey, _cachedMedStat);
+  // extract statusClass from html
+  const match = result.html.match(/class="decision ([^"]+)"/);
+  const cls = match ? match[1] : "status-unknown";
+  const title = ldl == null ? "❓ 資料不足" :
+    ldl < CDS.RISK_CONFIG[riskKey].target ? "✅ LDL 已達標" :
+    (ldl - CDS.RISK_CONFIG[riskKey].target) >= 20 ? "🚨 立即加強治療" : "⚠️ 尚未達標";
+
+  const advice = result.html.replace(/.*<div class="decision-body">/s,"").replace(/<\/div>\s*<\/div>\s*$/,"").trim();
+
+  document.getElementById("cdsCompact").innerHTML = `
+    <div class="cds-compact ${cls}">
+      <div class="cds-compact-title">${title}</div>
+      <div style="opacity:0.9;">${advice}</div>
+    </div>`;
+}
+
+// ── Submit decision → FHIR Task ──────────
+async function submitDecision() {
+  const btn = document.getElementById("submitBtn");
+  const resultEl = document.getElementById("submitResult");
+  btn.disabled = true;
+  btn.textContent = "⏳ 建立中...";
+  resultEl.style.display = "none";
+
+  const checks = ["chkDiet","chkLipid","chkHba1c","chkCk","chkAbpm","chkEdu"]
+    .filter(id => document.getElementById(id).checked)
+    .map(id => document.getElementById(id).nextSibling.textContent.trim());
+  const medAdj = document.getElementById("medAdjust").value;
+  const note   = document.getElementById("drNote").value.trim();
+
+  // Build FHIR Task resource
+  const task = {
+    resourceType: "Task",
+    status: "requested",
+    intent: "order",
+    priority: "routine",
+    code: { coding: [{ system: "http://loinc.org", code: "35094-2", display: "Blood pressure protocol" }], text: "血脂 CDS 臨床決策確認" },
+    for: { reference: `Patient/${_patientId}` },
+    authoredOn: new Date().toISOString(),
+    note: [{ text: [
+      note ? `醫師備註：${note}` : "",
+      checks.length ? `處置清單：${checks.join("、")}` : "",
+      medAdj ? `藥物調整：${document.getElementById("medAdjust").options[document.getElementById("medAdjust").selectedIndex].text}` : ""
+    ].filter(Boolean).join("\n") }],
+    input: [
+      { type: { text: "riskCategory" },  valueString: _riskKey },
+      { type: { text: "ldlValue" },       valueString: String(_cachedMedStat?._ldl ?? "unknown") },
+      { type: { text: "medicationAdjustment" }, valueString: medAdj || "none" }
+    ]
+  };
+
+  try {
+    if (_smartClient) {
+      await _smartClient.request({ url: "Task", method: "POST", body: JSON.stringify(task), headers: { "Content-Type": "application/fhir+json" } });
+      resultEl.className = "submit-result submit-ok";
+      resultEl.textContent = "✅ FHIR Task 已成功建立並傳送至 HIS";
+    } else {
+      throw new Error("SMART client 未初始化（Demo 模式）");
+    }
+  } catch (err) {
+    resultEl.className = "submit-result submit-fail";
+    resultEl.textContent = `⚠️ 傳送失敗（Demo 模式或網路錯誤）：${err.message}`;
+  }
+
+  resultEl.style.display = "block";
+  btn.disabled = false;
+  btn.textContent = "✅ 確認並建立 FHIR Task";
+}
+
+// ── Main load ─────────────────────────────
+async function startApp() {
+  initCharts();
+
+  try {
+    _smartClient = await FHIR.oauth2.ready();
+    document.getElementById("authStatus").innerHTML = "✅ OAuth 授權成功";
+    document.getElementById("authDot").style.background = "#4ade80";
+    document.getElementById("authDot").style.animation  = "none";
+    document.getElementById("serverInfo").textContent   =
+      (_smartClient.state.serverUrl || "").replace("https://","").slice(0,50);
+
+    _patientId = _smartClient.patient?.id;
+    if (!_patientId) throw new Error("未取得 patient context");
+
+    // Parallel fetch all data
+    const [pJson, lipids, condBundle, medBundle,
+           bgBundle, hba1cBundle, bpBundle, wtBundle, crBundle] = await Promise.all([
+      _smartClient.request(`Patient/${_patientId}`).catch(() => null),
+      CDS.queryLipidPanel(_smartClient, _patientId),
+      CDS.queryConditions(_smartClient, _patientId),
+      CDS.queryMedications(_smartClient, _patientId, 20),
+      CDS.queryLatestObs(_smartClient, _patientId, CDS.LOINC.GLUCOSE, 1),
+      CDS.queryLatestObs(_smartClient, _patientId, CDS.LOINC.HBA1C, 1),
+      CDS.queryLatestObs(_smartClient, _patientId, CDS.LOINC.BP, 1),
+      CDS.queryLatestObs(_smartClient, _patientId, CDS.LOINC.WEIGHT, 1),
+      CDS.queryLatestObs(_smartClient, _patientId, CDS.LOINC.CREATININE, 1)
+    ]);
+
+    // Patient info
+    CDS.renderPatientCard(pJson, _patientId, {
+      nameEl: document.getElementById("patientName"),
+      metaEl: document.getElementById("patientMeta"),
+      avatarEl: document.getElementById("patientAvatar")
+    });
+
+    // Vitals
+    const setVital = (valId, dateId, bundle) => {
+      const obs = CDS.firstObsValue(bundle);
+      document.getElementById(valId).textContent = obs.value != null ? CDS.fmtLipid(obs.value) : "—";
+      if (dateId && obs.date) document.getElementById(dateId).textContent = obs.date;
+    };
+    setVital("latestBG",    "bgDate",     bgBundle);
+    setVital("latestHba1c", "hba1cDate",  hba1cBundle);
+    setVital("latestWeight","weightDate", wtBundle);
+    setVital("latestCr",    "crDate",     crBundle);
+
+    const latestBP = bpBundle?.entry?.[0]?.resource;
+    const { sbp, dbp } = CDS.parseBP(latestBP);
+    document.getElementById("latestBP").textContent = (sbp && dbp) ? `${sbp}/${dbp}` : "—";
+    if (latestBP?.effectiveDateTime)
+      document.getElementById("bpDate").textContent = latestBP.effectiveDateTime.slice(0,10);
+
+    // Lipid panel
+    const ldl = lipids.ldl.value;
+    document.getElementById("dLdl").textContent   = ldl != null ? CDS.fmtLipid(ldl) : "—";
+    document.getElementById("dTc").textContent    = lipids.tc.value  != null ? CDS.fmtLipid(lipids.tc.value)  : "—";
+    document.getElementById("dHdl").textContent   = lipids.hdl.value != null ? CDS.fmtLipid(lipids.hdl.value) : "—";
+    document.getElementById("dTg").textContent    = lipids.tg.value  != null ? CDS.fmtLipid(lipids.tg.value)  : "—";
+    const nonHdl = (lipids.tc.value != null && lipids.hdl.value != null)
+      ? CDS.fmtLipid(lipids.tc.value - lipids.hdl.value) : "—";
+    document.getElementById("dNonHdl").textContent = nonHdl;
+
+    // Med status & risk inference
+    _cachedMedStat = CDS.parseMedStatus(medBundle);
+    _cachedMedStat._ldl = ldl; // store for task
+
+    _riskKey = CDS.inferRiskFromConditions(condBundle, medBundle) || "low";
+    _ldlTarget = CDS.RISK_CONFIG[_riskKey].target;
+
+    renderMeds(medBundle);
+    renderCdsCompact(ldl, _riskKey);
+    updateSidebar(ldl, _riskKey);
+    updateLdlChart(lipids.ldlHistory, _ldlTarget);
+    loadBpTrend(_patientId);
+
+  } catch (err) {
+    console.warn("SMART 授權或資料載入失敗：", err);
+    document.getElementById("authStatus").innerHTML = `⚠️ Demo 模式（${err.message}）`;
+    document.getElementById("authDot").style.background = "#f87171";
+    document.getElementById("authDot").style.animation  = "none";
+
+    // Demo patient fallback
+    document.getElementById("patientName").textContent = "陳嘉明（Demo）";
+    document.getElementById("patientMeta").innerHTML   = "男性 ｜ 1968-05-12 ｜ 57 歲";
+    document.getElementById("patientAvatar").textContent = "👨";
+
+    // Demo lipid data
+    const demoHistory = [
+      {date:"2024-02",value:148},{date:"2024-05",value:135},{date:"2024-08",value:122},
+      {date:"2024-11",value:118},{date:"2025-02",value:112},{date:"2025-06",value:98}
+    ];
+    updateLdlChart(demoHistory, 70);
+    document.getElementById("dLdl").textContent = "98";
+    document.getElementById("dTc").textContent  = "172";
+    document.getElementById("dHdl").textContent = "48";
+    document.getElementById("dTg").textContent  = "130";
+    document.getElementById("dNonHdl").textContent = "124";
+    document.getElementById("latestBP").textContent = "132/82";
+    document.getElementById("medsDisplay").innerHTML = `
+      <div class="med-item"><span class="med-status-dot med-status-active"></span><div><div style="font-weight:600;">Rosuvastatin 10mg</div><div style="font-size:11px;color:#94a3b8;">active</div></div></div>
+      <div class="med-item"><span class="med-status-dot med-status-active"></span><div><div style="font-weight:600;">Ezetimibe 10mg</div><div style="font-size:11px;color:#94a3b8;">active</div></div></div>`;
+    _riskKey = "veryhigh_mi";
+    _ldlTarget = 70;
+    renderCdsCompact(98, _riskKey);
+    updateSidebar(98, _riskKey);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", startApp);
+</script>
+</body>
+</html>
