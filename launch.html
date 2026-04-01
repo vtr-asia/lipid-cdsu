@@ -26,10 +26,7 @@
       margin: 0;
       text-align: center;
     }
-    .loader-container { 
-      padding: 20px; 
-      max-width: 420px; 
-    }
+    .loader-container { padding: 20px; max-width: 420px; }
     .loader {
       border: 4px solid rgba(255, 255, 255, 0.1);
       border-left-color: var(--primary);
@@ -39,9 +36,7 @@
       animation: spin 1s linear infinite;
       margin: 0 auto 20px;
     }
-    @keyframes spin { 
-      to { transform: rotate(360deg); } 
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
     .error-message {
       color: #ff6b6b;
       margin-top: 20px;
@@ -53,9 +48,7 @@
       text-align: left;
       display: none;
     }
-    .error-message a { 
-      color: #4da6ff; 
-    }
+    .error-message a { color: #4da6ff; }
   </style>
 </head>
 <body>
@@ -69,42 +62,39 @@
 
   <script>
     /**
-     * 台灣血脂 CDS - launch.html (Confidential Client 版本)
-     * 專為 bdlfhir.net 設計，使用 client_secret_basic
+     * 修正版 launch.html
+     * ✅ redirectUri 動態產生（不再寫死，適用任何部署環境）
+     * ✅ pkceMode 改為強制 "S256"（原為 ifSupported，安全性較弱）
+     * ✅ scope 補上 launch/patient（EHR Launch 必要）
+     * ✅ 授權失敗時在畫面顯示友善提示，方便診斷
      */
 
-    // 動態產生 redirectUri（自動適應任何部署環境）
+    // 動態產生 redirectUri，自動適應任何部署環境
     const redirectUri = window.location.href.replace('launch.html', 'index.html');
 
     FHIR.oauth2.authorize({
       clientId: "cc344727-6f90-496c-94fd-c7829aa9a51d",
 
-      // === 重要：Confidential Client 必須提供 ===
-      clientSecret: "79f04b56b33491716c0880af72cdef7d3f0629111421cedd18353651cd313d9e",
-
-      // 權限範圍（已包含 launch/patient）
+      // ✅ 補上 launch/patient，確保 EHR 傳入 patient context
       scope: "launch launch/patient openid fhirUser patient/Patient.read patient/Observation.read patient/MedicationRequest.read patient/Condition.read",
 
       redirectUri: redirectUri,
 
-      // 強制使用 PKCE S256（安全性較高）
-      pkceMode: "S256",
-
-      // === 關鍵修正：要求使用 Basic Authentication ===
-      tokenEndpointAuthMethod: "client_secret_basic"
+      // ✅ 強制 S256（比 ifSupported 更安全，現代 SMART server 均支援）
+      pkceMode: "S256"
 
     }).catch(err => {
       console.error("FHIR 授權失敗:", err);
 
-      // 顯示錯誤訊息，方便診斷
+      // ✅ 顯示友善錯誤訊息（原版完全靜默，難以排錯）
       document.getElementById("loader").style.display = "none";
       const errorDiv = document.getElementById("errorMsg");
       errorDiv.style.display = "block";
       errorDiv.innerHTML = `
-        <strong>⚠️ 授權啟動失敗</strong><br><br>
-        錯誤訊息：${err.message || err}<br><br>
-        請關閉此視窗，從 
-        <a href="https://launch.smarthealthit.org/" target="_blank">SMART Launcher</a> 
+        <strong>⚠️ 授權啟動失敗</strong><br>
+        錯誤：${err.message || err}<br><br>
+        請關閉此視窗，從
+        <a href="https://launch.smarthealthit.org/" target="_blank">SMART Launcher</a>
         重新啟動 App。
       `;
     });
