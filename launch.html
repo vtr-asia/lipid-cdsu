@@ -26,7 +26,10 @@
       margin: 0;
       text-align: center;
     }
-    .loader-container { padding: 20px; }
+    .loader-container { 
+      padding: 20px; 
+      max-width: 420px; 
+    }
     .loader {
       border: 4px solid rgba(255, 255, 255, 0.1);
       border-left-color: var(--primary);
@@ -36,42 +39,74 @@
       animation: spin 1s linear infinite;
       margin: 0 auto 20px;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes spin { 
+      to { transform: rotate(360deg); } 
+    }
+    .error-message {
+      color: #ff6b6b;
+      margin-top: 20px;
+      font-size: 14px;
+      background: rgba(255,107,107,0.1);
+      border: 1px solid rgba(255,107,107,0.3);
+      border-radius: 8px;
+      padding: 12px 16px;
+      text-align: left;
+      display: none;
+    }
+    .error-message a { 
+      color: #4da6ff; 
+    }
   </style>
 </head>
 <body>
 
   <div class="loader-container">
-    <div class="loader"></div>
+    <div class="loader" id="loader"></div>
     <h2>正在連線至 FHIR 醫療資訊系統...</h2>
     <p>請稍候，我們正在準備您的臨床決策輔助工具</p>
+    <div id="errorMsg" class="error-message"></div>
   </div>
 
   <script>
     /**
-     * 最終高風險修正版（符合你的要求）
-     * - 已移除 clientSecret（前端不再暴露機密金鑰）
-     * - 使用安全 PKCE 模式
-     * - 縮小 scope 至血脂 CDS 所需
-     * - **完全移除畫面上的錯誤提示**（只在 console 記錄）
+     * 台灣血脂 CDS - launch.html (Confidential Client 版本)
+     * 專為 bdlfhir.net 設計，使用 client_secret_basic
      */
+
+    // 動態產生 redirectUri（自動適應任何部署環境）
+    const redirectUri = window.location.href.replace('launch.html', 'index.html');
+
     FHIR.oauth2.authorize({
       clientId: "cc344727-6f90-496c-94fd-c7829aa9a51d",
-      clientSecret : "79f04b56b33491716c0880af72cdef7d3f0629111421cedd18353651cd313d9e"
 
-      // clientSecret 已完全移除
+      // === 重要：Confidential Client 必須提供 ===
+      clientSecret: "79f04b56b33491716c0880af72cdef7d3f0629111421cedd18353651cd313d9e",
 
-      scope: "launch openid fhirUser patient/Patient.read patient/Observation.read patient/MedicationRequest.read patient/Condition.read",
+      // 權限範圍（已包含 launch/patient）
+      scope: "launch launch/patient openid fhirUser patient/Patient.read patient/Observation.read patient/MedicationRequest.read patient/Condition.read",
 
-      redirectUri: "index.html",
+      redirectUri: redirectUri,
 
-      // 安全 PKCE 設定
-      pkceMode: "ifSupported"
+      // 強制使用 PKCE S256（安全性較高）
+      pkceMode: "S256",
+
+      // === 關鍵修正：要求使用 Basic Authentication ===
+      tokenEndpointAuthMethod: "client_secret_basic"
 
     }).catch(err => {
-      // 只記錄錯誤，不在畫面上顯示任何訊息
       console.error("FHIR 授權失敗:", err);
-      // 這裡不做任何 DOM 操作，讓 loading 畫面保持不變
+
+      // 顯示錯誤訊息，方便診斷
+      document.getElementById("loader").style.display = "none";
+      const errorDiv = document.getElementById("errorMsg");
+      errorDiv.style.display = "block";
+      errorDiv.innerHTML = `
+        <strong>⚠️ 授權啟動失敗</strong><br><br>
+        錯誤訊息：${err.message || err}<br><br>
+        請關閉此視窗，從 
+        <a href="https://launch.smarthealthit.org/" target="_blank">SMART Launcher</a> 
+        重新啟動 App。
+      `;
     });
   </script>
 </body>
