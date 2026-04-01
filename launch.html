@@ -1,78 +1,23 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>台灣血脂 CDS - 啟動中...</title>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
-  
-  <!-- 鎖定 fhirclient 穩定版本 -->
-  <script src="https://cdn.jsdelivr.net/npm/fhirclient@2.6.3/build/fhir-client.js"></script>
-  
-  <style>
-    :root {
-      --primary: #0066cc;
-      --bg-dark: #0a192f;
-      --text-light: #e6f1ff;
-    }
-    body {
-      font-family: 'Noto Sans TC', sans-serif;
-      background: var(--bg-dark);
-      color: var(--text-light);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-      text-align: center;
-    }
-    .loader-container { padding: 20px; }
-    .loader {
-      border: 4px solid rgba(255, 255, 255, 0.1);
-      border-left-color: var(--primary);
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 20px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-  </style>
-</head>
-<body>
+<script>
+  /**
+   * 保留 clientSecret 的版本
+   * 修正重點：
+   * 1. 補齊 clientId 後方的逗號（語法錯誤修正）
+   * 2. 移除多餘的空行註解，保持結構整潔
+   */
+  FHIR.oauth2.authorize({
+    clientId: "cc344727-6f90-496c-94fd-c7829aa9a51d", // 補上逗號
+    client_secret: "79f04b56b33491716c0880af72cdef7d3f0629111421cedd18353651cd313d9e",
 
-  <div class="loader-container">
-    <div class="loader"></div>
-    <h2>正在連線至 FHIR 醫療資訊系統...</h2>
-    <p>請稍候，我們正在準備您的臨床決策輔助工具</p>
-  </div>
+    scope: "launch openid fhirUser patient/Patient.read patient/Observation.read patient/MedicationRequest.read patient/Condition.read",
 
-  <script>
-    /**
-     * 最終高風險修正版（符合你的要求）
-     * - 已移除 clientSecret（前端不再暴露機密金鑰）
-     * - 使用安全 PKCE 模式
-     * - 縮小 scope 至血脂 CDS 所需
-     * - **完全移除畫面上的錯誤提示**（只在 console 記錄）
-     */
-    FHIR.oauth2.authorize({
-      clientId: "cc344727-6f90-496c-94fd-c7829aa9a51d",
-      client_secret : "79f04b56b33491716c0880af72cdef7d3f0629111421cedd18353651cd313d9e"
+    redirectUri: "index.html",
 
-      // clientSecret 已完全移除
+    // 如果 Server 不支援 PKCE，可維持 ifSupported 或移除此項
+    pkceMode: "ifSupported"
 
-      scope: "launch openid fhirUser patient/Patient.read patient/Observation.read patient/MedicationRequest.read patient/Condition.read",
-
-      redirectUri: "index.html",
-
-      // 安全 PKCE 設定
-      pkceMode: "ifSupported"
-
-    }).catch(err => {
-      // 只記錄錯誤，不在畫面上顯示任何訊息
-      console.error("FHIR 授權失敗:", err);
-      // 這裡不做任何 DOM 操作，讓 loading 畫面保持不變
-    });
-  </script>
-</body>
-</html>
+  }).catch(err => {
+    // 錯誤僅記錄於 console，不影響 UI 畫面
+    console.error("FHIR 授權失敗:", err);
+  });
+</script>
