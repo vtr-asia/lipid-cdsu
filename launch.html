@@ -6,7 +6,6 @@
   <title>台灣血脂 CDS - 啟動中...</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
   
-  <!-- fhirclient 穩定版本 -->
   <script src="https://cdn.jsdelivr.net/npm/fhirclient@2.6.3/build/fhir-client.js"></script>
   
   <style>
@@ -28,7 +27,7 @@
     }
     .loader-container { 
       padding: 20px; 
-      max-width: 420px; 
+      max-width: 460px; 
     }
     .loader {
       border: 4px solid rgba(255, 255, 255, 0.1);
@@ -39,9 +38,7 @@
       animation: spin 1s linear infinite;
       margin: 0 auto 20px;
     }
-    @keyframes spin { 
-      to { transform: rotate(360deg); } 
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
     .error-message {
       color: #ff6b6b;
       margin-top: 20px;
@@ -53,9 +50,7 @@
       text-align: left;
       display: none;
     }
-    .error-message a { 
-      color: #4da6ff; 
-    }
+    .error-message a { color: #4da6ff; }
   </style>
 </head>
 <body>
@@ -69,32 +64,33 @@
 
   <script>
     /**
-     * 臨時測試版 launch.html（Confidential Client）
-     * 已加入 clientSecret，僅供測試使用
-     * 注意：上線前務必移除 clientSecret 或改用 Public Client
+     * 推薦版 launch.html - Public Client（適合 GitHub Pages）
+     * 已移除 clientSecret，使用 PKCE + 正確處理 iss/launch 參數
      */
 
-    // 動態產生 redirectUri（自動適應 GitHub Pages 或其他部署環境）
-    const redirectUri = window.location.href.replace('launch.html', 'index.html');
+    const redirectUri = window.location.href.replace(/launch\.html.*$/, 'index.html');
+
+    // 從 URL 取得 iss 和 launch 參數
+    const urlParams = new URLSearchParams(window.location.search);
+    const iss = urlParams.get('iss');
+    const launchParam = urlParams.get('launch');
 
     FHIR.oauth2.authorize({
       clientId: "cc344727-6f90-496c-94fd-c7829aa9a51d",
-      
-      // === 臨時加入 clientSecret（這是本次測試重點）===
-      clientSecret: "79f04b56b33491716c0880af72cdef7d3f0629111421cedd18353651cd313d9e",
 
-      // 建議的 scope（已包含 EHR Launch 必要權限）
       scope: "launch launch/patient openid fhirUser patient/Patient.read patient/Observation.read patient/MedicationRequest.read patient/Condition.read",
 
       redirectUri: redirectUri,
 
-      // 強制使用 S256 PKCE
-      pkceMode: "S256"
+      pkceMode: "S256",
+
+      // 明確傳入 Launcher 帶來的參數
+      iss: iss,
+      launch: launchParam
 
     }).catch(err => {
       console.error("FHIR 授權失敗:", err);
 
-      // 顯示錯誤訊息在畫面上
       document.getElementById("loader").style.display = "none";
       const errorDiv = document.getElementById("errorMsg");
       errorDiv.style.display = "block";
@@ -102,5 +98,12 @@
         <strong>⚠️ 授權啟動失敗</strong><br>
         錯誤：${err.message || err}<br><br>
         <small>
-          請關閉此視窗，從 
-          <a href="https://launch.smarthealthit.org/" target="_blank">SMART Launcher</a>
+          請關閉此視窗，返回 
+          <a href="https://launch.smarthealthit.org/" target="_blank">SMART Launcher</a> 
+          重新點擊 Launch。
+        </small>
+      `;
+    });
+  </script>
+</body>
+</html>
